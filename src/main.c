@@ -5,7 +5,7 @@
 #include "ff.h"
 #include "rtc_32f1.h"
 #include "xprintf.h"
-#define F_CPU           8000000UL
+#define F_CPU           72000000UL
 #define TimerTick	F_CPU/1000-1 // 1 kHz
 
 extern void disk_timerproc(void);
@@ -65,7 +65,7 @@ int main( void)
   //char *ptr;
   InitSysClock();
   InitGPIO();
-  //InitSysTick();
+  InitSysTick();
   InitIRQ();
   InitUART();
   //NVIC_EnableIRQ (EXTI1_IRQn);
@@ -280,9 +280,14 @@ void InitGPIO( void)
 {
   // Enable PORTB Periph clock  
   RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;
-  GPIOB->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8);
+  /* Config PortB 8*/
+  /*GPIOB->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8); // reset config PortB8
   GPIOB->CRH |= GPIO_CRH_MODE8_1;
-  GPIOB->BSRR = GPIO_BSRR_BS8;
+  GPIOB->BSRR = GPIO_BSRR_BS8;*/
+  /* Config PortB 0*/
+  GPIOB->CRL &= ~(GPIO_CRL_MODE0 | GPIO_CRL_CNF0); // reset config PortB0
+  GPIOB->CRL |= GPIO_CRL_MODE0_1;
+  GPIOB->BSRR = GPIO_BSRR_BS0;
   // Enable PORTC Periph clock  
   RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
   // For GREEN LED PC10 Output
@@ -335,8 +340,16 @@ void InitSysClock(void)
    while (!(RCC->CR & RCC_CR_PLLRDY)) {} // Ожидание готовности PLL.
    FLASH->ACR |= FLASH_ACR_PRFTBE;              // Enable Prefetch Buffer.
    FLASH->ACR |= FLASH_ACR_LATENCY_2;           // Если 48< SystemCoreClock <= 72, пропускать 2 такта.*/
-   RCC->CFGR |= RCC_CFGR_SW_HSE;                // Тактирование с выхода PLL.
-   while ((RCC->CFGR&RCC_CFGR_SWS)!=0x04) {} // Ожидание переключения на PLL.
+   RCC->CR |= RCC_CR_PLLON;                     // Запустить PLL.
+   while (!(RCC->CR & RCC_CR_PLLRDY)) {} // Ожидание готовности PLL.
+   RCC->CFGR &=~((RCC_CFGR_PLLSRC|RCC_CFGR_PLLXTPRE|RCC_CFGR_PLLMULL)); //Reset
+   RCC->CFGR |= RCC_CFGR_PLLMULL9;      //PLL input clock x 9
+   RCC->CFGR |= RCC_CFGR_PLLXTPRE;      //HSE divider for PLL entry, 1: HSE clock divided by 2
+   RCC->CFGR |= RCC_CFGR_PLLSRC_HSE;    //PLL entry clock source, 1: HSE oscillator clock selected as PLL input clock
+   //RCC->CR |= RCC_CR_CSSOFF;
+   RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
+   RCC->CFGR |= RCC_CFGR_SW_PLL;                // Тактирование с выхода PLL.
+   while ((RCC->CFGR & RCC_CFGR_SWS) != 0x08) {} // Ожидание переключения на PLL.
    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
    //RCC->CFGR |= RCC_CFGR_MCO_SYSCLK;
    //RCC->CSR |= RCC_CSR_LSION;

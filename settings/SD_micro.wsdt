@@ -10,15 +10,22 @@
     <Static>
       <Workspace>
         <ColumnWidths>
-          <Column0>124</Column0>
+          <Column0>190</Column0>
           <Column1>27</Column1>
           <Column2>27</Column2>
           <Column3>27</Column3>
         </ColumnWidths>
       </Workspace>
+      <Build>
+        <ColumnWidth0>20</ColumnWidth0>
+        <ColumnWidth1>915</ColumnWidth1>
+        <ColumnWidth2>244</ColumnWidth2>
+        <ColumnWidth3>61</ColumnWidth3>
+      </Build>
+      <TerminalIO/>
     </Static>
     <Windows>
-      <Wnd1>
+      <Wnd0>
         <Tabs>
           <Tab>
             <Identity>TabID-22303-3351</Identity>
@@ -27,9 +34,21 @@
             <Session>
               <NodeDict>
                 <ExpandedNode>stm32f103c8</ExpandedNode>
+                <ExpandedNode>stm32f103c8/inc</ExpandedNode>
                 <ExpandedNode>stm32f103c8/src</ExpandedNode>
               </NodeDict>
             </Session>
+          </Tab>
+        </Tabs>
+        <SelectedTab>0</SelectedTab>
+      </Wnd0>
+      <Wnd1>
+        <Tabs>
+          <Tab>
+            <Identity>TabID-26548-3681</Identity>
+            <TabName>Build</TabName>
+            <Factory>Build</Factory>
+            <Session/>
           </Tab>
         </Tabs>
         <SelectedTab>0</SelectedTab>
@@ -45,11 +64,83 @@
           <SelStart>0</SelStart>
           <SelEnd>0</SelEnd>
           <XPos2>0</XPos2>
-          <YPos2>0</YPos2>
+          <YPos2>331</YPos2>
+          <SelStart2>11087</SelStart2>
+          <SelEnd2>11087</SelEnd2>
+        </Tab>
+        <ActiveTab>0</ActiveTab>
+        <Tab>
+          <Factory>TextEditor</Factory>
+          <Filename>$WS_DIR$\src\ff.c</Filename>
+          <XPos>0</XPos>
+          <YPos>0</YPos>
+          <SelStart>0</SelStart>
+          <SelEnd>0</SelEnd>
+          <XPos2>0</XPos2>
+          <YPos2>2183</YPos2>
+          <SelStart2>79824</SelStart2>
+          <SelEnd2>79824</SelEnd2>
+        </Tab>
+        <Tab>
+          <Factory>TextEditor</Factory>
+          <Filename>$WS_DIR$\src\mmc_32f1.c</Filename>
+          <XPos>0</XPos>
+          <YPos>0</YPos>
+          <SelStart>0</SelStart>
+          <SelEnd>0</SelEnd>
+          <XPos2>0</XPos2>
+          <YPos2>626</YPos2>
+          <SelStart2>20353</SelStart2>
+          <SelEnd2>20353</SelEnd2>
+        </Tab>
+        <Tab>
+          <Factory>TextEditor</Factory>
+          <Filename>$WS_DIR$\inc\stm32f10x.h</Filename>
+          <XPos>0</XPos>
+          <YPos>0</YPos>
+          <SelStart>0</SelStart>
+          <SelEnd>0</SelEnd>
+          <XPos2>0</XPos2>
+          <YPos2>1703</YPos2>
+          <SelStart2>80008</SelStart2>
+          <SelEnd2>80024</SelEnd2>
+        </Tab>
+        <Tab>
+          <Factory>TextEditor</Factory>
+          <Filename>$WS_DIR$\inc\system_stm32f10x.h</Filename>
+          <XPos>0</XPos>
+          <YPos>0</YPos>
+          <SelStart>0</SelStart>
+          <SelEnd>0</SelEnd>
+          <XPos2>0</XPos2>
+          <YPos2>30</YPos2>
           <SelStart2>0</SelStart2>
           <SelEnd2>0</SelEnd2>
         </Tab>
-        <ActiveTab>0</ActiveTab>
+        <Tab>
+          <Factory>TextEditor</Factory>
+          <Filename>$WS_DIR$\inc\STM32F100.h</Filename>
+          <XPos>0</XPos>
+          <YPos>0</YPos>
+          <SelStart>0</SelStart>
+          <SelEnd>0</SelEnd>
+          <XPos2>0</XPos2>
+          <YPos2>360</YPos2>
+          <SelStart2>0</SelStart2>
+          <SelEnd2>0</SelEnd2>
+        </Tab>
+        <Tab>
+          <Factory>TextEditor</Factory>
+          <Filename>$WS_DIR$\src\system_stm32f10x.c</Filename>
+          <XPos>0</XPos>
+          <YPos>0</YPos>
+          <SelStart>0</SelStart>
+          <SelEnd>0</SelEnd>
+          <XPos2>0</XPos2>
+          <YPos2>1048</YPos2>
+          <SelStart2>36051</SelStart2>
+          <SelEnd2>36147</SelEnd2>
+        </Tab>
       </Pane>
       <ActivePane>0</ActivePane>
       <Sizes>
@@ -69,26 +160,29 @@
             </Toolbar-0137a830>
           </Sizes>
         </Row0>
+        <Row1>
+          <Sizes/>
+        </Row1>
       </Top>
       <Left>
         <Row0>
           <Sizes>
-            <Wnd1>
+            <Wnd0>
               <Rect>
                 <Top>-2</Top>
                 <Left>-2</Left>
-                <Bottom>680</Bottom>
-                <Right>198</Right>
+                <Bottom>482</Bottom>
+                <Right>264</Right>
                 <x>-2</x>
                 <y>-2</y>
                 <xscreen>200</xscreen>
                 <yscreen>200</yscreen>
                 <sizeHorzCX>156250</sizeHorzCX>
                 <sizeHorzCY>276243</sizeHorzCY>
-                <sizeVertCX>156250</sizeVertCX>
-                <sizeVertCY>941989</sizeVertCY>
+                <sizeVertCX>207813</sizeVertCX>
+                <sizeVertCY>668508</sizeVertCY>
               </Rect>
-            </Wnd1>
+            </Wnd0>
           </Sizes>
         </Row0>
       </Left>
@@ -99,7 +193,24 @@
       </Right>
       <Bottom>
         <Row0>
-          <Sizes/>
+          <Sizes>
+            <Wnd1>
+              <Rect>
+                <Top>-2</Top>
+                <Left>-2</Left>
+                <Bottom>198</Bottom>
+                <Right>1282</Right>
+                <x>-2</x>
+                <y>-2</y>
+                <xscreen>1284</xscreen>
+                <yscreen>200</yscreen>
+                <sizeHorzCX>1003125</sizeHorzCX>
+                <sizeHorzCY>276243</sizeHorzCY>
+                <sizeVertCX>156250</sizeVertCX>
+                <sizeVertCY>276243</sizeVertCY>
+              </Rect>
+            </Wnd1>
+          </Sizes>
         </Row0>
       </Bottom>
       <Float>
