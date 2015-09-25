@@ -41,7 +41,7 @@ int num = 0;
 volatile UINT Timer;
 
 volatile uint32_t cnt_puls_pos = 0;
-volatile uint32_t cnt_puls_neg = 0;
+uint32_t cnt_puls_neg = 0;
 volatile unsigned char flag =0;
 //------------------------------------------------------------------------------
 void InitSysClock(void);
@@ -63,13 +63,13 @@ int main( void)
 {
   char *ptr2;
   //char *ptr;
+  //SystemInit();
   InitSysClock();
   InitGPIO();
   InitSysTick();
   InitIRQ();
   InitUART();
-  //NVIC_EnableIRQ (EXTI1_IRQn);
-  //NVIC_EnableIRQ (EXTI2_IRQn);
+  NVIC_EnableIRQ (EXTI9_5_IRQn);
   NVIC_EnableIRQ (USART1_IRQn);
   //rtc_initialize();
   //rtc_gettime(&rtc);
@@ -90,7 +90,6 @@ int main( void)
     {
       put_rc(result);
     }
-  
   __enable_irq ();
   while(1) 
   {
@@ -140,17 +139,18 @@ int main( void)
 //-----------------------------------------------------------------------------
 void InitIRQ(void)
 {
+  //RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
   //External interrupt
-  //Interrupt INT1 for PORTA.
-  AFIO->EXTICR[1] |= AFIO_EXTICR1_EXTI1_PA;     
-  EXTI->FTSR |= EXTI_FTSR_TR1;
-  EXTI->IMR |= EXTI_IMR_MR1; 
+  //Interrupt INT1 for PORTB.
+  AFIO->EXTICR[1] |= AFIO_EXTICR2_EXTI6_PB;     
+  EXTI->RTSR |= EXTI_RTSR_TR6;
+  EXTI->IMR |= EXTI_IMR_MR6; 
   
   //External interrupt
-  //Interrupt INT2 for PORTA.
-  AFIO->EXTICR[1] |= AFIO_EXTICR1_EXTI2_PA;     
-  EXTI->FTSR |= EXTI_FTSR_TR2;
-  EXTI->IMR |= EXTI_IMR_MR2;
+  //Interrupt INT2 for PORTB.
+  AFIO->EXTICR[2] |= AFIO_EXTICR3_EXTI8_PB;     
+  EXTI->FTSR |= EXTI_FTSR_TR8;
+  EXTI->IMR |= EXTI_IMR_MR8;
   
   //Timer interrupt
   
@@ -213,11 +213,11 @@ void SysTick_Handler(void)
         if (result == FR_OK) 
           {
             rtc_gettime(&rtc);
-            sprintf(buff, "%u/%u/%u %2u:%02u:%02u N %d\r\n", rtc.mday, rtc.month, rtc.year, rtc.hour, rtc.min, rtc.sec, cnt_puls_pos);
+            sprintf(buff, "%u/%u/%u %2u:%02u:%02u N %d\r\n", rtc.mday, rtc.month, rtc.year, rtc.hour, rtc.min, rtc.sec, cnt_puls_neg);
             UART1_Tx_Str(buff);
             int str_lenth = strlen(buff);
             ofs_crs = f_tell(&file);
-            f_lseek(&file, ofs_crs);
+            f_lseek(&file, f_size(&file));
             f_write(&file, buff, str_lenth, &nWritten);
             //ofs_crs += str_lenth;
             f_close(&file);
@@ -243,19 +243,16 @@ DWORD get_fattime (void)
 		| ((DWORD)rtc.min << 5)
 		| ((DWORD)rtc.sec >> 1);
 }
-
-void EXTI1_IRQHandler(void)
-{
-  Delay(50);
-  cnt_puls_pos += 1;
-  EXTI->PR |= EXTI_PR_PR1;
-}
-
-void EXTI2_IRQHandler(void)
+void EXTI9_5_IRQHandler(void)
 {
   Delay(5);
-  cnt_puls_neg += 1;
-  EXTI->PR |= EXTI_PR_PR2;
+  if ((EXTI->PR)&EXTI_PR_PR8)
+  {
+    cnt_puls_pos += 1;
+  }
+  else cnt_puls_neg += 1;
+  EXTI->PR |= EXTI_PR_PR8;
+  EXTI->PR |= EXTI_PR_PR6;
 }
 
 void USART1_IRQHandler(void)
@@ -272,7 +269,7 @@ void USART1_IRQHandler(void)
 void InitUART(void)
 {
   RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
-  USART1->BRR = 0x341; //0xEA60;		// Bodrate for 1200 on 72Mhz
+  USART1->BRR = 0x1D4C; //468.75;		// Bodrate for 9600 on 72Mhz
   USART1->CR1 |= USART_CR1_UE | USART_CR1_TE | USART_CR1_RE | USART_CR1_RXNEIE; // USART1 ON, TX ON, RX ON
 }
 
@@ -280,29 +277,38 @@ void InitGPIO( void)
 {
   // Enable PORTB Periph clock  
   RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;
-  /* Config PortB 8*/
-  /*GPIOB->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8); // reset config PortB8
-  GPIOB->CRH |= GPIO_CRH_MODE8_1;
-  GPIOB->BSRR = GPIO_BSRR_BS8;*/
+  
+  //For Ext.Interrupt PB8 Input, resistor Pull-Down
+  GPIOB->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8); // reset config PortB8
+  GPIOB->CRH |= GPIO_CRH_CNF8_1;
+  GPIOB->BSRR = GPIO_BSRR_BS8;
+  
+  /* Config PortB 7*/
+  GPIOB->CRL &= ~(GPIO_CRL_MODE7 | GPIO_CRL_CNF7); // reset config PortB8
+  GPIOB->CRL |= GPIO_CRL_MODE7_1;
+  GPIOB->BSRR = GPIO_BSRR_BS7;
+  
+  /*For Ext.Interrupt PB6 Input, resistor Pull-Down*/
+  GPIOB->CRL &= ~(GPIO_CRL_MODE6 | GPIO_CRL_CNF6);
+  GPIOB->CRL |= GPIO_CRL_CNF6_1;
+  //GPIOB->BSRR = GPIO_BSRR_BS6;
+  
   /* Config PortB 0*/
   GPIOB->CRL &= ~(GPIO_CRL_MODE0 | GPIO_CRL_CNF0); // reset config PortB0
   GPIOB->CRL |= GPIO_CRL_MODE0_1;
   GPIOB->BSRR = GPIO_BSRR_BS0;
+  
   // Enable PORTC Periph clock  
-  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+  //RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
   // For GREEN LED PC10 Output
   GPIOC->CRH &= ~(GPIO_CRH_MODE10 | GPIO_CRH_CNF10);
   GPIOC->CRH |= GPIO_CRH_MODE10_1;
   // Enable PORTA Periph clock
   RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN;;
   
-  //For Ext.Interrupt PA1 Input, resistor Pull-Down
-  GPIOA->CRL &= ~(GPIO_CRL_MODE1 | GPIO_CRL_CNF1);
-  GPIOA->CRL |= GPIO_CRL_CNF1_1;
-  
-  //For Ext.Interrupt PA2 Input, resistor Pull-Down
-  GPIOA->CRL &= ~(GPIO_CRL_MODE2 | GPIO_CRL_CNF2);
-  GPIOA->CRL |= GPIO_CRL_CNF2_1;
+  GPIOA->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8);
+  GPIOA->CRH |= GPIO_CRH_CNF8_1;         //PA9 alternate function output Push-pull
+  GPIOA->CRH |= GPIO_CRH_MODE8_0;       //PA9 output mode, max speed 10 MHz
   
   //For UART. PA9 Output, PA10 Input
   GPIOA->CRH &= ~(GPIO_CRH_MODE9 | GPIO_CRH_CNF9);
@@ -331,27 +337,21 @@ void InitGPIO( void)
 void InitSysClock(void)
 {
    RCC->CR |= RCC_CR_HSEON;                       // Включить генератор HSE.
-   while (!(RCC->CR & RCC_CR_HSERDY)) {};       // Ожидание готовности HSE. 
-   //RCC->CFGR2 &=~(RCC_CFGR2_PREDIV1);         // Предочистка делителя HSE.
-   /*RCC->CFGR &=~((RCC_CFGR_PLLSRC|RCC_CFGR_PLLXTPRE|RCC_CFGR_PLLMULL)); // Предочистка.
-   RCC->CFGR |= RCC_CFGR_PLLSRC_PREDIV1;        // Тактировать PLL от HSE/PREDIV1.
-   RCC->CFGR |= RCC_CFGR_PLLMULL9;            //Умножать частоту на PLL_MUL.
-   RCC->CR |= RCC_CR_PLLON;                     // Запустить PLL.
-   while (!(RCC->CR & RCC_CR_PLLRDY)) {} // Ожидание готовности PLL.
+   while (!(RCC->CR & RCC_CR_HSERDY)) {};       // Ожидание готовности HSE.
+     __NOP();
    FLASH->ACR |= FLASH_ACR_PRFTBE;              // Enable Prefetch Buffer.
    FLASH->ACR |= FLASH_ACR_LATENCY_2;           // Если 48< SystemCoreClock <= 72, пропускать 2 такта.*/
-   RCC->CR |= RCC_CR_PLLON;                     // Запустить PLL.
-   while (!(RCC->CR & RCC_CR_PLLRDY)) {} // Ожидание готовности PLL.
    RCC->CFGR &=~((RCC_CFGR_PLLSRC|RCC_CFGR_PLLXTPRE|RCC_CFGR_PLLMULL)); //Reset
    RCC->CFGR |= RCC_CFGR_PLLMULL9;      //PLL input clock x 9
    RCC->CFGR |= RCC_CFGR_PLLXTPRE;      //HSE divider for PLL entry, 1: HSE clock divided by 2
    RCC->CFGR |= RCC_CFGR_PLLSRC_HSE;    //PLL entry clock source, 1: HSE oscillator clock selected as PLL input clock
-   //RCC->CR |= RCC_CR_CSSOFF;
-   RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
+   RCC->CR |= RCC_CR_PLLON;                     // Запустить PLL.
+   while (!(RCC->CR & RCC_CR_PLLRDY)) {} // Ожидание готовности PLL.
+   RCC->CFGR &=(uint32_t)((uint32_t)~(RCC_CFGR_SW));
    RCC->CFGR |= RCC_CFGR_SW_PLL;                // Тактирование с выхода PLL.
    while ((RCC->CFGR & RCC_CFGR_SWS) != 0x08) {} // Ожидание переключения на PLL.
-   RCC->APB1ENR |= RCC_APB1ENR_PWREN;
-   //RCC->CFGR |= RCC_CFGR_MCO_SYSCLK;
+   //RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+   RCC->CFGR |= RCC_CFGR_MCO_PLL;
    //RCC->CSR |= RCC_CSR_LSION;
    //while (!(RCC->CSR&RCC_CSR_LSIRDY)){}
    

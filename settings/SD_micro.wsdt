@@ -2,47 +2,42 @@
 
 <Workspace>
   <ConfigDictionary>
-    <CurrentConfigs>
-      <Project>stm32f103c8/Debug</Project>
-    </CurrentConfigs>
-  </ConfigDictionary>
+    
+  <CurrentConfigs><Project>stm32f103c8/Debug</Project></CurrentConfigs></ConfigDictionary>
   <Desktop>
     <Static>
       <Workspace>
         <ColumnWidths>
-          <Column0>190</Column0>
-          <Column1>27</Column1>
-          <Column2>27</Column2>
-          <Column3>27</Column3>
-        </ColumnWidths>
+          
+          
+          
+          
+        <Column0>190</Column0><Column1>27</Column1><Column2>27</Column2><Column3>27</Column3></ColumnWidths>
       </Workspace>
       <Build>
-        <ColumnWidth0>20</ColumnWidth0>
-        <ColumnWidth1>915</ColumnWidth1>
-        <ColumnWidth2>244</ColumnWidth2>
-        <ColumnWidth3>61</ColumnWidth3>
-      </Build>
+        
+        
+        
+        
+      <ColumnWidth0>20</ColumnWidth0><ColumnWidth1>915</ColumnWidth1><ColumnWidth2>244</ColumnWidth2><ColumnWidth3>61</ColumnWidth3></Build>
       <TerminalIO/>
-    </Static>
+    <Debug-Log><ColumnWidth0>20</ColumnWidth0><ColumnWidth1>1221</ColumnWidth1></Debug-Log></Static>
     <Windows>
-      <Wnd0>
+      
+      
+    <Wnd0>
         <Tabs>
           <Tab>
             <Identity>TabID-22303-3351</Identity>
             <TabName>Workspace</TabName>
             <Factory>Workspace</Factory>
             <Session>
-              <NodeDict>
-                <ExpandedNode>stm32f103c8</ExpandedNode>
-                <ExpandedNode>stm32f103c8/inc</ExpandedNode>
-                <ExpandedNode>stm32f103c8/src</ExpandedNode>
-              </NodeDict>
-            </Session>
+              
+            <NodeDict><ExpandedNode>stm32f103c8</ExpandedNode><ExpandedNode>stm32f103c8/inc</ExpandedNode><ExpandedNode>stm32f103c8/src</ExpandedNode><ExpandedNode>stm32f103c8/src/startup</ExpandedNode></NodeDict></Session>
           </Tab>
         </Tabs>
-        <SelectedTab>0</SelectedTab>
-      </Wnd0>
-      <Wnd1>
+        
+      <SelectedTab>0</SelectedTab></Wnd0><Wnd1>
         <Tabs>
           <Tab>
             <Identity>TabID-26548-3681</Identity>
@@ -50,173 +45,22 @@
             <Factory>Build</Factory>
             <Session/>
           </Tab>
-        </Tabs>
-        <SelectedTab>0</SelectedTab>
-      </Wnd1>
-    </Windows>
+        <Tab><Identity>TabID-19341-16344</Identity><TabName>Debug Log</TabName><Factory>Debug-Log</Factory><Session/></Tab></Tabs>
+        
+      <SelectedTab>1</SelectedTab></Wnd1></Windows>
     <Editor>
-      <Pane>
-        <Tab>
-          <Factory>TextEditor</Factory>
-          <Filename>$WS_DIR$\src\main.c</Filename>
-          <XPos>0</XPos>
-          <YPos>0</YPos>
-          <SelStart>0</SelStart>
-          <SelEnd>0</SelEnd>
-          <XPos2>0</XPos2>
-          <YPos2>331</YPos2>
-          <SelStart2>11087</SelStart2>
-          <SelEnd2>11087</SelEnd2>
-        </Tab>
-        <ActiveTab>0</ActiveTab>
-        <Tab>
-          <Factory>TextEditor</Factory>
-          <Filename>$WS_DIR$\src\ff.c</Filename>
-          <XPos>0</XPos>
-          <YPos>0</YPos>
-          <SelStart>0</SelStart>
-          <SelEnd>0</SelEnd>
-          <XPos2>0</XPos2>
-          <YPos2>2183</YPos2>
-          <SelStart2>79824</SelStart2>
-          <SelEnd2>79824</SelEnd2>
-        </Tab>
-        <Tab>
-          <Factory>TextEditor</Factory>
-          <Filename>$WS_DIR$\src\mmc_32f1.c</Filename>
-          <XPos>0</XPos>
-          <YPos>0</YPos>
-          <SelStart>0</SelStart>
-          <SelEnd>0</SelEnd>
-          <XPos2>0</XPos2>
-          <YPos2>626</YPos2>
-          <SelStart2>20353</SelStart2>
-          <SelEnd2>20353</SelEnd2>
-        </Tab>
-        <Tab>
-          <Factory>TextEditor</Factory>
-          <Filename>$WS_DIR$\inc\stm32f10x.h</Filename>
-          <XPos>0</XPos>
-          <YPos>0</YPos>
-          <SelStart>0</SelStart>
-          <SelEnd>0</SelEnd>
-          <XPos2>0</XPos2>
-          <YPos2>1703</YPos2>
-          <SelStart2>80008</SelStart2>
-          <SelEnd2>80024</SelEnd2>
-        </Tab>
-        <Tab>
-          <Factory>TextEditor</Factory>
-          <Filename>$WS_DIR$\inc\system_stm32f10x.h</Filename>
-          <XPos>0</XPos>
-          <YPos>0</YPos>
-          <SelStart>0</SelStart>
-          <SelEnd>0</SelEnd>
-          <XPos2>0</XPos2>
-          <YPos2>30</YPos2>
-          <SelStart2>0</SelStart2>
-          <SelEnd2>0</SelEnd2>
-        </Tab>
-        <Tab>
-          <Factory>TextEditor</Factory>
-          <Filename>$WS_DIR$\inc\STM32F100.h</Filename>
-          <XPos>0</XPos>
-          <YPos>0</YPos>
-          <SelStart>0</SelStart>
-          <SelEnd>0</SelEnd>
-          <XPos2>0</XPos2>
-          <YPos2>360</YPos2>
-          <SelStart2>0</SelStart2>
-          <SelEnd2>0</SelEnd2>
-        </Tab>
-        <Tab>
-          <Factory>TextEditor</Factory>
-          <Filename>$WS_DIR$\src\system_stm32f10x.c</Filename>
-          <XPos>0</XPos>
-          <YPos>0</YPos>
-          <SelStart>0</SelStart>
-          <SelEnd>0</SelEnd>
-          <XPos2>0</XPos2>
-          <YPos2>1048</YPos2>
-          <SelStart2>36051</SelStart2>
-          <SelEnd2>36147</SelEnd2>
-        </Tab>
-      </Pane>
-      <ActivePane>0</ActivePane>
-      <Sizes>
-        <Pane>
-          <X>1000000</X>
-          <Y>1000000</Y>
-        </Pane>
-      </Sizes>
-      <SplitMode>1</SplitMode>
-    </Editor>
+      
+      
+      
+      
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\src\mmc_32f1.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>626</YPos2><SelStart2>20353</SelStart2><SelEnd2>20353</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\src\main.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>7</YPos2><SelStart2>262</SelStart2><SelEnd2>262</SelEnd2></Tab><ActiveTab>1</ActiveTab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\inc\stm32f10x.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>1297</YPos2><SelStart2>89980</SelStart2><SelEnd2>89980</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\inc\system_stm32f10x.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>63</YPos2><SelStart2>0</SelStart2><SelEnd2>0</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\inc\STM32F100.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>913</YPos2><SelStart2>843</SelStart2><SelEnd2>843</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\src\system_stm32f10x.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>1063</YPos2><SelStart2>36064</SelStart2><SelEnd2>36086</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\startup\startup_stm32f10x_cl.s</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>28</YPos2><SelStart2>0</SelStart2><SelEnd2>0</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\src\ff.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>2183</YPos2><SelStart2>79824</SelStart2><SelEnd2>79824</SelEnd2></Tab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
     <Positions>
-      <Top>
-        <Row0>
-          <Sizes>
-            <Toolbar-0137a830>
-              <key>iaridepm.enu1</key>
-            </Toolbar-0137a830>
-          </Sizes>
-        </Row0>
-        <Row1>
-          <Sizes/>
-        </Row1>
-      </Top>
-      <Left>
-        <Row0>
-          <Sizes>
-            <Wnd0>
-              <Rect>
-                <Top>-2</Top>
-                <Left>-2</Left>
-                <Bottom>482</Bottom>
-                <Right>264</Right>
-                <x>-2</x>
-                <y>-2</y>
-                <xscreen>200</xscreen>
-                <yscreen>200</yscreen>
-                <sizeHorzCX>156250</sizeHorzCX>
-                <sizeHorzCY>276243</sizeHorzCY>
-                <sizeVertCX>207813</sizeVertCX>
-                <sizeVertCY>668508</sizeVertCY>
-              </Rect>
-            </Wnd0>
-          </Sizes>
-        </Row0>
-      </Left>
-      <Right>
-        <Row0>
-          <Sizes/>
-        </Row0>
-      </Right>
-      <Bottom>
-        <Row0>
-          <Sizes>
-            <Wnd1>
-              <Rect>
-                <Top>-2</Top>
-                <Left>-2</Left>
-                <Bottom>198</Bottom>
-                <Right>1282</Right>
-                <x>-2</x>
-                <y>-2</y>
-                <xscreen>1284</xscreen>
-                <yscreen>200</yscreen>
-                <sizeHorzCX>1003125</sizeHorzCX>
-                <sizeHorzCY>276243</sizeHorzCY>
-                <sizeVertCX>156250</sizeVertCX>
-                <sizeVertCY>276243</sizeVertCY>
-              </Rect>
-            </Wnd1>
-          </Sizes>
-        </Row0>
-      </Bottom>
-      <Float>
-        <Sizes/>
-      </Float>
-    </Positions>
+      
+      
+      
+      
+      
+    <Top><Row0><Sizes><Toolbar-0137a830><key>iaridepm.enu1</key></Toolbar-0137a830></Sizes></Row0></Top><Left><Row0><Sizes><Wnd0><Rect><Top>-2</Top><Left>-2</Left><Bottom>482</Bottom><Right>264</Right><x>-2</x><y>-2</y><xscreen>200</xscreen><yscreen>200</yscreen><sizeHorzCX>156250</sizeHorzCX><sizeHorzCY>276243</sizeHorzCY><sizeVertCX>207813</sizeVertCX><sizeVertCY>668508</sizeVertCY></Rect></Wnd0></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>198</Bottom><Right>1282</Right><x>-2</x><y>-2</y><xscreen>1284</xscreen><yscreen>200</yscreen><sizeHorzCX>1003125</sizeHorzCX><sizeHorzCY>276243</sizeHorzCY><sizeVertCX>156250</sizeVertCX><sizeVertCY>276243</sizeVertCY></Rect></Wnd1></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
   </Desktop>
 </Workspace>
 
