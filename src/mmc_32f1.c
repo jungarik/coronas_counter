@@ -87,7 +87,7 @@
    Module Private Functions
 
 ---------------------------------------------------------------------------*/
-
+#include "stm32f0xx.h"
 #include "STM32F100.h"
 #include "diskio.h"
 

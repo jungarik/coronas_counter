@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=1527218614
+Checksum=-476525589
 [Exceptions]
 StopOnUncaught=_ 0
 StopOnThrow=_ 0
@@ -31,11 +31,11 @@ Enabled=0
 ShowSource=1
 [SWOTraceHWSettings]
 OverrideDefaultClocks=0
-CpuClock=72000000
+CpuClock=48000000
 ClockAutoDetect=0
 ClockWanted=2000000
 JtagSpeed=2000000
-Prescaler=36
+Prescaler=24
 TimeStampPrescIndex=0
 TimeStampPrescData=0
 PcSampCYCTAP=1
@@ -71,8 +71,12 @@ Category=_ 0
 LoggingEnabled=_ 0
 LogFile=_ ""
 [Aliases]
-Count=0
-SuppressDialog=0
+A0=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rcc.c" ""
+A1=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
+A2=_ "E:\Work\SD_micro_F051C8\startup\startup_stm32f051.s" ""
+A3=_ "U:\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
+Count=4
+SuppressDialog=1
 [Trace2]
 Enabled=0
 ShowSource=0
