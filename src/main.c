@@ -2,23 +2,18 @@
 #include <stdio.h>
 #include "stm32f0xx.h"
 #include "system_stm32f0xx.h"
-//#include "stm32f0xx_conf.h"
-//#include "diskio.h"
 #include "ff.h"
-//#include "ffconf.h"
-//#include "sd.c"
-//#include "STM32F100.h"
-//#include "xprintf.h"
 
 #define F_CPU           48000000UL
 #define TimerTick	F_CPU/1000-1 // 1 kHz
-#define PowerOFF        GPIOB -> BSRR = GPIO_BSRR_BR_4;
-
-/*#define SPI_SD SPI1
-#define spi_cs_low() do { GPIOA -> BRR = GPIO_Pin_4;} while (0)
-#define spi_cs_high() do { GPIOA -> BSRR = GPIO_Pin_4;} while (0)*/
-//#define spi_cs_low() GPIOA -> BSRR = GPIO_BSRR_BR_4, spi_txrx(0xFF);
-//#define spi_cs_high() GPIOA -> BSRR = GPIO_BSRR_BS_4, spi_txrx(0xFF);
+#define PWROFF          GPIOB -> BSRR = GPIO_BSRR_BR_9;
+#define PWRHOLD         GPIOB -> BSRR = GPIO_BSRR_BS_9;
+#define MODEMON         GPIOA -> BSRR = GPIO_BSRR_BS_10;\
+                            Delay(9500000);\
+                            GPIOA -> BSRR = GPIO_BSRR_BR_10;                       
+#define LEDOFF          GPIOB -> BSRR = GPIO_BSRR_BR_15;
+#define LEDON           GPIOB -> BSRR = GPIO_BSRR_BS_15;
+#define BUFFSIZE      255
 
 #ifdef __GNUC__
   /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
@@ -36,41 +31,39 @@
 //WORD AccFiles, AccDirs;
 //FILINFO Finfo;
 //FRESULT result;
-UINT nRead, nWritten;
+__IO uint8_t nRead, nWritten;   // Возвращаемые значения прочитаных и записанных байт на/с SD карту.
 //DWORD ofs_crs = 0;
-unsigned char str_lenth = 0;
 //unsigned char sh;
-char buff[255] = "123456";
+
+/*Буффер для записис данных на SD карту. Помещается 
+  информация для записи. Каждая запись с буфера 
+  производится в новую строку в файле. Длина строки не превышает 
+  размер 255 символов (байт)*/
+char cmdRxBuff[BUFFSIZE];
+__IO uint8_t cntCmdRx = 0;
+//__IO uint8_t SD_RdWrBuff[SDBUFFSIZE];     
+//__IO uint8_t SD_RdBuff[SDBUFFSIZE];
+
+//__IO uint8_t CMD_RdWrBuff[CMDBUFFSIZE];
+//__IO uint8_t CMD_RdBuff[CMDBUFFSIZE];
 
 __IO uint8_t ALARM_Occured = 0;
 
-
-#if _USE_LFN
-char Lfname[512];
-
-#endif
-
-char Line[256];				/* Console input buffer */
+///char Line[256];				/* Console input buffer */
 //BYTE Buff[4096]; //__attribute__ ((aligned (4))) ;	/* Working buffer */
-char Line_Rx[256];
+//char Line_Rx[256];
 
 //RTCTIME rtc;
 //FATFS FatFs;				/* File system object for each logical drive */
 FIL file;				/* File objects */
 //DIR dir;					/* Directory object */
-DWORD count_ms;
+__IO uint8_t cntTimeMs;
+__IO uint8_t cntTimeDelay;
 char cmd[256];
 int num = 0;
-/*enum sd_speed 
-    { 
-      SD_SPEED_INVALID, 
-      SD_SPEED_400KHZ, 
-      SD_SPEED_25MHZ 
-    };*/
-//volatile UINT Timer;
 
-uint32_t cnt_puls_pos = 0;
-uint32_t cnt_puls_neg = 0;
+__IO uint32_t cnt_puls_pos = 0;
+__IO uint32_t cnt_puls_neg = 0;
 volatile unsigned char flag =0;
 //------------------------------------------------------------------------------
 void InitSysClock(void);
@@ -78,70 +71,47 @@ void InitGPIO(void);
 void Delay(unsigned int Val);
 void InitIRQ(void);
 void InitSysTick(void);
+
 static void RCC_Config(void);
 static void USART1_Config(void);
 static void RTC_Config(void);
 static void RTC_DateConfig(void);
 static void GPIO_Config(void);
 static void RTC_AlarmConfig(void);
-void RTC_IRQHandler(void);
+
+//void RTC_IRQHandler(void);
+void USART1_IRQHandler(void);
+
+//uint8_t ToTimeProc(uint32_t counter);
 //-------------------------------------------------------------------
-/*void spi_set_speed(enum sd_speed speed);
-void spi_init(void);
-uint8_t spi_txrx(uint8_t data);
-void sd_nec(void);
-void sd_cmd(uint8_t cmd, uint32_t arg);
-uint8_t sd_get_r1(void);
-uint8_t crc7_one(uint8_t t, uint8_t data);*/
-
-
-
 //void RTC_IRQHandler(void)
 //static void USART_SendString();
 void InitIWDG(void);
 void put_rc(FRESULT rc);
 int StrToInt(char *ptr);
-
-
-
- 
 //------------------------------------------------------------------------------
- 
 int main( void) 
 {
-  
-  //char *ptr2;
-  //char *ptr;
   SystemInit();
-  //InitSysClock();
-  InitGPIO();
-  GPIO_Config();
-  //GPIOB -> BSRR = GPIO_BSRR_BS_4;
-  InitSysTick();
+  GPIO_Config();        // После конфигурации сразу включить удержание питания!!!
+  //InitSysTick();
   RCC_Config();
-  RTC_Config();
-  RTC_DateConfig();
+  //RTC_Config();
+  //RTC_DateConfig();
+  //RTC_AlarmConfig();
   USART1_Config();
-  USART_Cmd(USART1, ENABLE);
-  RTC_AlarmConfig();
-    Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-      Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  //spi_init();
+  USART_ClearFlag(USART1, USART_FLAG_RXNE);
+  USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+  //printf("Start!");
+  __enable_irq ();
+  //MODEMON;
+  
+  //while (!(strncmp(cmdRxBuff, "OK", 0))){}
+  //printf("Good job!");
 
-  //InitIRQ();
-  //InitUART();
   //NVIC_EnableIRQ (USART1_IRQn);
   //NVIC_EnableIRQ (EXTI9_5_IRQn);
-  //rtc_initialize();
-  //rtc_gettime(&rtc);
+
   /*if (rtc_initialize()) 
     {
       rtc_gettime(&rtc);
@@ -162,6 +132,7 @@ int main( void)
   Delay(950000);
   InitIRQ();
   NVIC_EnableIRQ (EXTI9_5_IRQn);
+  // отключаем команду
   sprintf(Line, "ATE0\r\n");
   UART1_Tx_Str(Line);
     Delay(950000);
@@ -208,40 +179,33 @@ int main( void)
   Delay(950000);
   Delay(950000);
   __enable_irq ();*/
-  /*Delay(9000000);
-  Delay(9000000);
-  Delay(9000000);
-  GPIOA->BSRR = GPIO_BSRR_BS_10;
-  Delay(9000000);
-  Delay(9000000);
-  Delay(9000000);
-  GPIOA->BSRR = GPIO_BSRR_BR_10;*/  
-  FRESULT result;
-
+ 
+  /*FRESULT result;
   // смонтировать диск
   FATFS FATFS_Obj;
-  //result = f_write(&file, buff, str_lenth, &nWritten);
-
   result = f_mount(&FATFS_Obj, "0", 1);
   if (result != FR_OK)
-  {
-    put_rc(result);
-  }
+    {
+      put_rc(result);
+    }
+  else 
   
   printf("Write!!!!!!!!!!!!!!!!");
-  result = f_open(&file, "readme.txt", FA_OPEN_EXISTING | FA_WRITE);
+  result = f_open(&file, "config.txt", FA_OPEN_EXISTING | FA_READ);
         if (result == FR_OK) 
           {
             //UART1_Tx_Str(buff);
-            int str_lenth = strlen(buff);
+            int str_lenth = strlen(SD_RdWrBuff);
             //f_lseek(&file, f_size(&file));
             //f_lseek(&file, ofs_crs);
-            f_write(&file, buff, str_lenth, &nWritten);
+            f_read(&file, buffRdWr, str_lenth, &nWritten);
             f_close(&file);
           }
-        else {put_rc(result);}
+        else {
+          put_rc(result);
+         }
     
-  __enable_irq ();
+  __enable_irq ();*/
   while(1) 
   {
     /*ptr2 = cmd; 
@@ -318,23 +282,23 @@ void InitSysTick(void)
 
 void SysTick_Handler(void)
 {
-  count_ms += 1;
-  if (count_ms == 5000)
+  cntTimeMs += 1;
+  if (cntTimeMs == 5000)
   {
       RTC_TimeTypeDef  RTC_TimeStruct;
       //GPIO_InitTypeDef GPIO_InitStructure;
-      GPIOB -> ODR ^= GPIO_ODR_15;
+      //GPIOB -> ODR ^= GPIO_ODR_15;
       RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
-      printf("\n\r%02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
+      //printf("\n\r%02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       //sprintf(Line, "%u/%u/%u %2u:%02u:%02u \0", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       /* Loop until the end of transmission */
       /* The software must wait until TC=1. The TC flag remains cleared during all data
          transfers and it is set by hardware at the last frame’s end of transmission*/
-      while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET) {}
-      count_ms = 0x00;
+      //while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET) {}
+      cntTimeMs = 0x00;
+      //ToTimeProc();
       
-     //owerOFF; // Выключить питание устройства.
-      
+     //owerOFF; // Выключить питание устройства. 
   }
   //disk_timerproc();
   /*if (count_ms == 1000)
@@ -412,19 +376,6 @@ void SysTick_Handler(void)
   disk_timerproc();*/
 }
 
-/*DWORD get_fattime (void)
-{
-        RTCTIME rtc;
-	// Get local time 
-	if (!rtc_gettime(&rtc)) return 0;
-	// Pack date and time into a DWORD variable 
-	return	  ((DWORD)(rtc.year - 1980) << 25)
-		| ((DWORD)rtc.month << 21)
-		| ((DWORD)rtc.mday << 16)
-		| ((DWORD)rtc.hour << 11)
-		| ((DWORD)rtc.min << 5)
-		| ((DWORD)rtc.sec >> 1);
-}*/
 void EXTI9_5_IRQHandler(void)
 {
   Delay(5);
@@ -437,23 +388,42 @@ void EXTI9_5_IRQHandler(void)
   EXTI->PR |= EXTI_PR_PR6;
 }
 
+/******* USART interrupt ****************************************************/
 void USART1_IRQHandler(void)
 {
- if (USART1->ISR & USART_ISR_RXNE)
-	{
-	Line[num]= USART1->RDR;
-        if (cmd[num]=='\0'){
-          num = 0;
-        }
-        else {num += 1;}
-	}
+  while (cmdRxBuff[cntCmdRx] != '\r' )
+  {
+   if(USART_GetITStatus(USART1, USART_IT_RXNE) == SET)
+    {
+      LEDON;
+      /* Read one byte from the receive data register */
+      cmdRxBuff[cntCmdRx++] = USART_ReceiveData(USART1);
+      if(cntCmdRx == BUFFSIZE)
+      {
+        /* Disable the EVAL_COM1 Receive interrupt */
+        cntCmdRx = 0x00;
+      }
+    }
+  }
+
+    /*if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
+    {   
+      // Write one byte to the transmit data register 
+      USART_SendData(USART1, TxBuffer[TxCount++]);
+
+      if(TxCount == NbrOfDataToTransfer)
+      {
+        // Disable the EVAL_COM1 Transmit interrupt 
+        USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
+      }
+    }*/
 }
 
 void InitGPIO( void) 
 {
   // Enable PORTB Periph clock  
-  RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
-  RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+  //RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+ // RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
   
   //For Enter to Debug Mode PB12 PIN25 Input, resistor Pull-Down
   /*GPIOB->CRH &= ~(GPIO_CRH_MODE12 | GPIO_CRH_CNF12); // reset config PortB8
@@ -483,10 +453,10 @@ void InitGPIO( void)
   // Enable PORTC Periph clock  
   //RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;*/
   // For GREEN LED PC10 Output
-  GPIOB->MODER &= ~GPIO_MODER_MODER15;
+  /*GPIOB->MODER &= ~GPIO_MODER_MODER15;
   GPIOB->MODER |= GPIO_MODER_MODER15_0;
   GPIOA->MODER &= ~GPIO_MODER_MODER10;
-  GPIOA->MODER |= GPIO_MODER_MODER10_0;
+  GPIOA->MODER |= GPIO_MODER_MODER10_0;*/
   // Enable PORTA Periph clock
   /*RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN;;
   
@@ -522,7 +492,7 @@ void InitGPIO( void)
 static void RCC_Config(void)
 {
   /* Enable GPIO clock */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA|RCC_AHBPeriph_GPIOB, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB, ENABLE);
   /* Enable the PWR clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   /* Enable USART1 Clock */
@@ -535,6 +505,10 @@ static void GPIO_Config(void)
   
   GPIO_InitTypeDef GPIO_InitStructure;
   
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
+  
   /* USART1 Pins configuration ************************************************/
   /* Connect pin to Periph */
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_1); 
@@ -545,44 +519,23 @@ static void GPIO_Config(void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);  
   
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
-  
-  /* RTC_Out Pin configuration ************************************************/
+  /* PWR, LED MODEM Pin configuration ************************************************/
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT; //(_OUT, _AF, _AN)
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz; //(_2MHz, _10MHz, 40MHz)
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //(_NOPULL, _UP)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4; //(_0 ... _15)
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; //(_NOPULL, _UP)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_15; //(_0 ... _15)
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //(_PP - push/pull, _OD - open drain)
+  
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_PinAFConfig(GPIOC, GPIO_PinSource13, GPIO_AF_0);*/
+  
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
   
 }
-void InitSysClock(void)
-{
-   RCC->CR |= RCC_CR_HSEON;                       // Включить генератор HSE.
-   while (!(RCC->CR & RCC_CR_HSERDY)) {};       // Ожидание готовности HSE.
-     __NOP();
-   FLASH->ACR |= FLASH_ACR_PRFTBE;              // Enable Prefetch Buffer.
-   FLASH->ACR |= FLASH_ACR_LATENCY;           // Если 48< SystemCoreClock <= 72, пропускать 2 такта.*/
-   RCC->CFGR &=~((RCC_CFGR_PLLSRC|RCC_CFGR_PLLXTPRE|RCC_CFGR_PLLMULL)); //Reset
-   //RCC->CFGR |= RCC_CFGR_PLLMULL9;      //PLL input clock x 9
-   //RCC->CFGR |= RCC_CFGR_PLLXTPRE;      //HSE divider for PLL entry, 1: HSE clock divided by 2
-   //RCC->CFGR |= RCC_CFGR_PLLSRC_1;    //PLL entry clock source, 1: HSE oscillator clock selected as PLL input clock
-   //RCC->CR |= RCC_CR_PLLON;                     // Запустить PLL.
-   //while (!(RCC->CR & RCC_CR_PLLRDY)) {} // Ожидание готовности PLL.
-   RCC->CFGR &=(uint32_t)((uint32_t)~(RCC_CFGR_SW));
-   RCC->CFGR |= RCC_CFGR_SW_PLL;                // Тактирование с выхода PLL.
-   while ((RCC->CFGR & RCC_CFGR_SWS) != 0x08) {} // Ожидание переключения на PLL.
-   //RCC->APB1ENR |= RCC_APB1ENR_PWREN;
-   RCC->CFGR |= RCC_CFGR_MCO_PLL;
-   //RCC->CSR |= RCC_CSR_LSION;
-   //while (!(RCC->CSR&RCC_CSR_LSIRDY)){}
-   
-   //DBGMCU->CR |= DBGMCU_CR_DBG_STANDBY;
-}
+
 static void RTC_Config(void)
  {
     RTC_InitTypeDef RTC_InitStructure;
@@ -671,6 +624,7 @@ static void RTC_AlarmConfig(void)
   RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
   RTC_ClearITPendingBit(RTC_IT_ALRA);
 } 
+
 void RTC_IRQHandler(void)
 {
   /* Check on the AlarmA flag and on the number of interrupts per Second (60*8) */
@@ -683,26 +637,36 @@ void RTC_IRQHandler(void)
     EXTI_ClearITPendingBit(EXTI_Line17);
   }  
 }
+
 static void USART1_Config(void)
  {
    USART_InitTypeDef USART_InitStructure;
-  
+   NVIC_InitTypeDef NVIC_InitStructure;
+   USART_Cmd(USART1, DISABLE);
+  /* USARTx configuration ----------------------------------------------------*/
   /* USARTx configured as follow:
   - BaudRate = 115200 baud  
   - Word Length = 8 Bits
   - Stop Bit = 1 Stop Bit
   - Parity = No Parity
   - Hardware flow control disabled (RTS and CTS signals)
-  - Receive and transmit enabled
-  */
+  - Receive and transmit enabled*/
   USART_InitStructure.USART_BaudRate = 115200;
   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   USART_InitStructure.USART_StopBits = USART_StopBits_1;
   USART_InitStructure.USART_Parity = USART_Parity_No;
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-  
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx; 
   USART_Init(USART1, &USART_InitStructure);
+  //USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+  /* NVIC configuration */
+  /* Enable the USARTx Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  /* Enable USART */
+  USART_Cmd(USART1, ENABLE);
   
  }
    
@@ -713,6 +677,12 @@ void Delay( unsigned int Val) {
     __NOP();
   }
 }
+/*uint8_t ToTimeProc(uint32_t timeCount){
+  timeCount--;
+  if (timeCount == 0)
+    return 0;
+  else return 1;
+}*/
 
 PUTCHAR_PROTOTYPE
 {

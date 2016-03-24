@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=-476525589
+Checksum=-1520053373
 [Exceptions]
 StopOnUncaught=_ 0
 StopOnThrow=_ 0
@@ -74,8 +74,9 @@ LogFile=_ ""
 A0=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rcc.c" ""
 A1=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
 A2=_ "E:\Work\SD_micro_F051C8\startup\startup_stm32f051.s" ""
-A3=_ "U:\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
-Count=4
+A3=_ "U:\SD_micro_F051C8\src\stm32f0xx_rcc.c" ""
+A4=_ "U:\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
+Count=5
 SuppressDialog=1
 [Trace2]
 Enabled=0
