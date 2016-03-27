@@ -13,7 +13,8 @@
                             GPIOA -> BSRR = GPIO_BSRR_BR_10;                       
 #define LEDOFF          GPIOB -> BSRR = GPIO_BSRR_BR_15;
 #define LEDON           GPIOB -> BSRR = GPIO_BSRR_BS_15;
-#define BUFFSIZE      255
+#define LEDXOR          GPIOB -> ODR ^= GPIO_ODR_15;
+#define BUFFSIZE        255
 
 #ifdef __GNUC__
   /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
@@ -57,8 +58,8 @@ __IO uint8_t ALARM_Occured = 0;
 //FATFS FatFs;				/* File system object for each logical drive */
 FIL file;				/* File objects */
 //DIR dir;					/* Directory object */
-__IO uint8_t cntTimeMs;
-__IO uint8_t cntTimeDelay;
+__IO uint32_t cntTimeMs;
+__IO uint32_t cntTimeDelay;
 char cmd[256];
 int num = 0;
 
@@ -74,6 +75,7 @@ void InitSysTick(void);
 
 static void RCC_Config(void);
 static void USART1_Config(void);
+static void USART2_Config(void);
 static void RTC_Config(void);
 static void RTC_DateConfig(void);
 static void GPIO_Config(void);
@@ -81,8 +83,8 @@ static void RTC_AlarmConfig(void);
 
 //void RTC_IRQHandler(void);
 void USART1_IRQHandler(void);
-
-//uint8_t ToTimeProc(uint32_t counter);
+void USART2_IRQHandler(void);
+void SysTick_Handler(void);
 //-------------------------------------------------------------------
 //void RTC_IRQHandler(void)
 //static void USART_SendString();
@@ -94,20 +96,18 @@ int main( void)
 {
   SystemInit();
   GPIO_Config();        // После конфигурации сразу включить удержание питания!!!
-  //InitSysTick();
+  SysTick_Config(SystemCoreClock / 1000);
   RCC_Config();
-  //RTC_Config();
+  RTC_Config();
   //RTC_DateConfig();
   //RTC_AlarmConfig();
-  USART1_Config();
-  USART_ClearFlag(USART1, USART_FLAG_RXNE);
-  USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+  USART2_Config();
   //printf("Start!");
+  //LEDON;
   __enable_irq ();
   //MODEMON;
   
-  //while (!(strncmp(cmdRxBuff, "OK", 0))){}
-  //printf("Good job!");
+
 
   //NVIC_EnableIRQ (USART1_IRQn);
   //NVIC_EnableIRQ (EXTI9_5_IRQn);
@@ -208,6 +208,15 @@ int main( void)
   __enable_irq ();*/
   while(1) 
   {
+          uint32_t subSec = RTC_GetSubSecond();
+      printf("%d\r\n", subSec);
+    //uint32_t timeLoopStop = 0;
+    //cntTimeDelay = 2000;
+    //while ((strncmp(cmdRxBuff, "OK", 2)))
+      //{ if (cntTimeDelay == 0){break;} }
+    //printf("Good job!");
+    //memset(cmdRxBuff, 0, BUFFSIZE);
+    //cntCmdRx = 0x00;
     /*ptr2 = cmd; 
     if (num == 0)
     {
@@ -271,24 +280,18 @@ void InitIRQ(void)
   
 } 
 
-void InitSysTick(void)
-{
-  SysTick->LOAD = TimerTick;
-  SysTick->VAL = TimerTick;
-  SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk |
-                  SysTick_CTRL_TICKINT_Msk | 
-                  SysTick_CTRL_ENABLE_Msk;
-}
-
 void SysTick_Handler(void)
 {
   cntTimeMs += 1;
-  if (cntTimeMs == 5000)
+  //LEDON;
+  if (cntTimeMs == 1000)
   {
+      LEDXOR;
       RTC_TimeTypeDef  RTC_TimeStruct;
       //GPIO_InitTypeDef GPIO_InitStructure;
       //GPIOB -> ODR ^= GPIO_ODR_15;
       RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
+
       //printf("\n\r%02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       //sprintf(Line, "%u/%u/%u %2u:%02u:%02u \0", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       /* Loop until the end of transmission */
@@ -388,7 +391,9 @@ void EXTI9_5_IRQHandler(void)
   EXTI->PR |= EXTI_PR_PR6;
 }
 
-/******* USART interrupt ****************************************************/
+/******************************************************************************
+                        USART1 interrupt handler 
+*******************************************************************************/
 void USART1_IRQHandler(void)
 {
   while (cmdRxBuff[cntCmdRx] != '\r' )
@@ -406,6 +411,34 @@ void USART1_IRQHandler(void)
     }
   }
 
+    /*if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
+    {   
+      // Write one byte to the transmit data register 
+      USART_SendData(USART1, TxBuffer[TxCount++]);
+
+      if(TxCount == NbrOfDataToTransfer)
+      {
+        // Disable the EVAL_COM1 Transmit interrupt 
+        USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
+      }
+    }*/
+}
+/******************************************************************************
+                        USART2 interrupt handler 
+*******************************************************************************/
+void USART2_IRQHandler(void)
+{
+  while ((cmdRxBuff[cntCmdRx-1] != '\r'))
+  {
+   if(USART_GetITStatus(USART2, USART_IT_RXNE) == SET)
+    {
+      /* Read one byte from the receive data register */
+      cmdRxBuff[cntCmdRx++] = USART_ReceiveData(USART2);
+    }
+   if (cntTimeDelay == 0){break;}
+  }
+  
+  //LEDOFF;
     /*if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
     {   
       // Write one byte to the transmit data register 
@@ -497,6 +530,8 @@ static void RCC_Config(void)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   /* Enable USART1 Clock */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+  /* Enable USART2 Clock */
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
   
 }
 
@@ -522,13 +557,25 @@ static void GPIO_Config(void)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);  
   
-  /* PWR, LED MODEM Pin configuration ************************************************/
+  /* USART2 Pins configuration ************************************************/
+  /* Connect pin to Periph */
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_1); 
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_1);    
+  
+  /* Configure pins as AF pushpull */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  
+  /* PWR, LED, MODEM Pin configuration ************************************************/
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT; //(_OUT, _AF, _AN)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; //(_NOPULL, _UP)
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //(_NOPULL, _UP)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_15; //(_0 ... _15)
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //(_PP - push/pull, _OD - open drain)
-  
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
@@ -637,7 +684,9 @@ void RTC_IRQHandler(void)
     EXTI_ClearITPendingBit(EXTI_Line17);
   }  
 }
-
+/******************************************************************************
+---------------------- USART1 Configurating------------------------------------
+*******************************************************************************/
 static void USART1_Config(void)
  {
    USART_InitTypeDef USART_InitStructure;
@@ -669,9 +718,44 @@ static void USART1_Config(void)
   USART_Cmd(USART1, ENABLE);
   
  }
+/******************************************************************************
+---------------------- USART2 Configurating------------------------------------
+*******************************************************************************/
+static void USART2_Config(void)
+ {
+   USART_InitTypeDef USART_InitStructure;
+   NVIC_InitTypeDef NVIC_InitStructure;
+   USART_Cmd(USART2, DISABLE);
+  /* USARTx configuration ----------------------------------------------------*/
+  /* USARTx configured as follow:
+  - BaudRate = 115200 baud  
+  - Word Length = 8 Bits
+  - Stop Bit = 1 Stop Bit
+  - Parity = No Parity
+  - Hardware flow control disabled (RTS and CTS signals)
+  - Receive and transmit enabled*/
+  USART_InitStructure.USART_BaudRate = 115200;
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;
+  USART_InitStructure.USART_Parity = USART_Parity_No;
+  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx; 
+  USART_Init(USART2, &USART_InitStructure);
+  
+  /* NVIC configuration */
+  /* Enable the USARTx Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  /* Enable USART */
+  USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+  USART_Cmd(USART2, ENABLE);
+  
+ }
    
 //------------------------------------------------------------------------------
- 
+
 void Delay( unsigned int Val) {
   for( ; Val != 0; Val--) {
     __NOP();
@@ -688,10 +772,10 @@ PUTCHAR_PROTOTYPE
 {
   /* Place your implementation of fputc here */
   /* e.g. write a character to the USART */
-  USART_SendData(USART1, (uint8_t) ch);
+  USART_SendData(USART2, (uint8_t) ch);
 
   /* Loop until transmit data register is empty */
-  while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET) {}
+  while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET) {}
   return ch;
 }
 void put_rc(FRESULT rc)
