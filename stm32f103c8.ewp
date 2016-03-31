@@ -1864,6 +1864,9 @@
       <name>$PROJ_DIR$\inc\stm32f0xx_gpio.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\inc\stm32f0xx_iwdg.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\inc\stm32f0xx_misc.h</name>
     </file>
     <file>
@@ -1910,6 +1913,9 @@
     </file>
     <file>
       <name>$PROJ_DIR$\src\stm32f0xx_gpio.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\src\stm32f0xx_iwdg.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\src\stm32f0xx_misc.c</name>

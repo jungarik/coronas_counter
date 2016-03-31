@@ -739,11 +739,11 @@ void RTC_AlarmSubSecondConfig(uint32_t RTC_Alarm, uint32_t RTC_AlarmSubSecondVal
 uint32_t RTC_GetAlarmSubSecond(uint32_t RTC_Alarm);
 
 /* WakeUp Timer configuration functions ***************************************/ 
-void RTC_WakeUpClockConfig(uint32_t RTC_WakeUpClock); /*!< available only for STM32F072 devices */ 
-void RTC_SetWakeUpCounter(uint32_t RTC_WakeUpCounter); /*!< available only for STM32F072 devices */ 
-uint32_t RTC_GetWakeUpCounter(void); /*!< available only for STM32F072 devices */ 
-ErrorStatus RTC_WakeUpCmd(FunctionalState NewState); /*!< available only for STM32F072 devices */ 
-
+void RTC_WakeUpClockConfig(uint32_t RTC_WakeUpClock);   /*!< available only for STM32F072 devices */ 
+void RTC_SetWakeUpCounter(uint32_t RTC_WakeUpCounter);  /*!< available only for STM32F072 devices */ 
+uint32_t RTC_GetWakeUpCounter(void);                    /*!< available only for STM32F072 devices */ 
+ErrorStatus RTC_WakeUpCmd(FunctionalState NewState);    /*!< available only for STM32F072 devices */ 
+  
 /* Daylight Saving configuration functions ************************************/
 void RTC_DayLightSavingConfig(uint32_t RTC_DayLightSaving, uint32_t RTC_StoreOperation);
 uint32_t RTC_GetStoreOperation(void);

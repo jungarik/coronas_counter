@@ -6,8 +6,8 @@
 
 #define F_CPU           48000000UL
 #define TimerTick	F_CPU/1000-1 // 1 kHz
-#define PWROFF          GPIOB -> BSRR = GPIO_BSRR_BR_9;
-#define PWRHOLD         GPIOB -> BSRR = GPIO_BSRR_BS_9;
+#define PWROFF          GPIOB -> BSRR = GPIO_BSRR_BR_3;
+#define PWRHOLD         GPIOB -> BSRR = GPIO_BSRR_BS_3;
 #define MODEMON         GPIOA -> BSRR = GPIO_BSRR_BS_8;\
                             Delay(9500000);\
                             GPIOA -> BSRR = GPIO_BSRR_BR_8;                       
@@ -90,6 +90,7 @@ static void RTC_DateConfig(void);
 static void GPIO_Config(void);
 static void RTC_AlarmConfig(void);
 static void SendCmdToModem(char *buffRx);
+static void SetNextStartTime(void);
 
 //void RTC_IRQHandler(void);
 void USART1_IRQHandler(void);
@@ -107,16 +108,17 @@ int main( void)
   SystemInit();
   RCC_Config();
   GPIO_Config();        // После конфигурации сразу включить удержание питания!!!
-  //PWRHOLD;
+  PWRHOLD;
   SysTick_Config(SystemCoreClock / 1000);
   //MODEMON;
   USART1_Config();
   USART2_Config();
-  RTC_Config();
+  SetNextStartTime();
+  //RTC_Config();
   //RTC_DateConfig();
-  RTC_AlarmConfig();
+  //RTC_AlarmConfig();
   printf("Start!");
-  //LEDON;
+  LEDON;
   __enable_irq ();
   //MODEMON;
   Delay(950000);
@@ -243,13 +245,15 @@ int main( void)
     //ptr2 = cmd; 
     //if (num == 0)
     //{
-    //if (strncmp((userRxBuff, "st\r\n", 11))
-    //{
-      //RTC_Config();
-      //RTC_AlarmConfig();
-      //cntUserRx = 0;
-      //memset(userTxBuff,'\0',4);
-    //}
+    if ((strncmp(userRxBuff, "st\r\n", 4)) == 0)
+    {
+      LEDXOR;
+      RTC_Config();
+      RTC_AlarmConfig();
+      cntUserRx = 0;
+      memset(userRxBuff,'\0',4);
+      //SysTick_Config(SystemCoreClock / 1000);
+    }
     /*switch (userRxBuff[0])
     {
     case time:
@@ -303,22 +307,24 @@ void SysTick_Handler(void)
 {
   cntTimeMs += 1;
   //LEDON;
-  if (cntTimeMs == 5000)
+  if (cntTimeMs == 1000)
   {
+      cntTimeMs = 0x00;
       //LEDXOR;
       RTC_TimeTypeDef  RTC_TimeStruct;
       //GPIO_InitTypeDef GPIO_InitStructure;
       //GPIOB -> ODR ^= GPIO_ODR_15;
       RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
-      printf("\n\r%02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
+      printf("\n\r%02d %02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_H12, RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
+      
+      PWROFF;
       //sprintf(Line, "%u/%u/%u %2u:%02u:%02u \0", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       /* Loop until the end of transmission */
       /* The software must wait until TC=1. The TC flag remains cleared during all data
          transfers and it is set by hardware at the last frame’s end of transmission*/
       //while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET) {}
-      cntTimeMs = 0x00;
-      //ToTimeProc();
       
+      //ToTimeProc();
      //owerOFF; // Выключить питание устройства. 
   }
   //disk_timerproc();
@@ -584,16 +590,25 @@ static void GPIO_Config(void)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
-  /* PWR, LED, MODEM Pin configuration ****************************************/
+  /* PWR, LED Pin configuration ****************************************/
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT; //(_OUT, _AF, _AN)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //(_NOPULL, _UP)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_15; //(_0 ... _15)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_15; //(_0 ... _15)
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //(_PP - push/pull, _OD - open drain)
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   
+  /*MODEM ON Pin configuration ************************************************/
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
+  
+  /*STOP Pin configuration ************************************************/
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN; //(_OUT, _AF, _AN)
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; //(_NOPULL, _UP)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4; //(_0 ... _15)
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //(_PP - push/pull, _OD - open drain)
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
   
 }
 /******************************************************************************
@@ -618,7 +633,7 @@ static void RTC_Config(void)
     /* ck_spre(1Hz) = RTCCLK(LSI) /(AsynchPrediv + 1)*(SynchPrediv + 1)*/
     RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
     RTC_InitStructure.RTC_SynchPrediv  = 0xFF;
-    RTC_InitStructure.RTC_HourFormat   = RTC_HourFormat_24;
+    RTC_InitStructure.RTC_HourFormat   = RTC_HourFormat_12;
     RTC_Init(&RTC_InitStructure);
     /* Set the time to 00h 00mn 00s AM */
     RTC_TimeStruct.RTC_H12     = RTC_H12_AM;
@@ -655,10 +670,12 @@ static void RTC_AlarmConfig(void)
   RTC_AlarmStructInit(&RTC_AlarmStructure);
   
   RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_H12_AM;
-  RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = 0x0A;
+  RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = 10;
   RTC_AlarmStructure.RTC_AlarmDateWeekDaySel    = RTC_AlarmDateWeekDaySel_Date;
   //RTC_AlarmStructure.RTC_AlarmDateWeekDay       = RTC_Weekday_Monday;    
-  RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_DateWeekDay;
+  RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_Minutes | 
+                                                  RTC_AlarmMask_Hours | 
+                                                  RTC_AlarmMask_DateWeekDay;
   
   RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
   
@@ -694,11 +711,45 @@ void RTC_IRQHandler(void)
   { 
     /* ALARM is enabled */
     ALARM_Occured = 1;
-    LEDXOR;
+    //LEDXOR;
+    
     /* Clear RTC AlarmA Flags */
     RTC_ClearITPendingBit(RTC_IT_ALRA);
     EXTI_ClearITPendingBit(EXTI_Line17);
   }  
+}
+/******************************************************************************
+                        SetNextStartTime
+*******************************************************************************/
+static void SetNextStartTime(void)
+{
+  /*Получаем текущее время и устанавливаем будильник на 10 сек вперед*/
+    RTC_TimeTypeDef  RTC_currentTimeStruct;
+    RTC_GetTime(RTC_Format_BIN, &RTC_currentTimeStruct);
+    
+  /* Настройка будильника на 10 сек вперед*/
+    RTC_AlarmTypeDef RTC_AlarmStructure;
+    RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
+    RTC_AlarmStructInit(&RTC_AlarmStructure);
+    
+    RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_currentTimeStruct.RTC_H12;
+    if ((RTC_currentTimeStruct.RTC_Seconds + 10) > 59)
+      {
+        RTC_currentTimeStruct.RTC_Seconds = (RTC_currentTimeStruct.RTC_Seconds + 10) - 60;
+      }
+    else RTC_currentTimeStruct.RTC_Seconds = RTC_currentTimeStruct.RTC_Seconds + 10;
+
+    RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = RTC_currentTimeStruct.RTC_Seconds;
+    RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes  = RTC_currentTimeStruct.RTC_Minutes;
+    RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours    = RTC_currentTimeStruct.RTC_Hours;
+    RTC_AlarmStructure.RTC_AlarmDateWeekDaySel    = RTC_AlarmDateWeekDaySel_Date;
+    //RTC_AlarmStructure.RTC_AlarmDateWeekDay       = RTC_Weekday_Monday;    
+    RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_Minutes | 
+                                                    RTC_AlarmMask_Hours | 
+                                                    RTC_AlarmMask_DateWeekDay;
+    
+    RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
+    RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
 }
 /******************************************************************************
                         USART1 Configurating
