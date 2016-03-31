@@ -8,13 +8,18 @@
 #define TimerTick	F_CPU/1000-1 // 1 kHz
 #define PWROFF          GPIOB -> BSRR = GPIO_BSRR_BR_9;
 #define PWRHOLD         GPIOB -> BSRR = GPIO_BSRR_BS_9;
-#define MODEMON         GPIOA -> BSRR = GPIO_BSRR_BS_10;\
+#define MODEMON         GPIOA -> BSRR = GPIO_BSRR_BS_8;\
                             Delay(9500000);\
-                            GPIOA -> BSRR = GPIO_BSRR_BR_10;                       
+                            GPIOA -> BSRR = GPIO_BSRR_BR_8;                       
 #define LEDOFF          GPIOB -> BSRR = GPIO_BSRR_BR_15;
 #define LEDON           GPIOB -> BSRR = GPIO_BSRR_BS_15;
 #define LEDXOR          GPIOB -> ODR ^= GPIO_ODR_15;
 #define BUFFSIZE        255
+                            
+#define time            't'
+#define set             's'
+#define get             'g'
+                           
 
 #ifdef __GNUC__
   /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
@@ -41,7 +46,11 @@ __IO uint8_t nRead, nWritten;   // Возвращаемые значения прочитаных и записанных
   производится в новую строку в файле. Длина строки не превышает 
   размер 255 символов (байт)*/
 char cmdRxBuff[BUFFSIZE];
+char cmdTxBuff[BUFFSIZE];
+char userRxBuff[BUFFSIZE];
+char userTxBuff[BUFFSIZE];
 __IO uint8_t cntCmdRx = 0;
+__IO uint8_t cntUserRx = 0;
 //__IO uint8_t SD_RdWrBuff[SDBUFFSIZE];     
 //__IO uint8_t SD_RdBuff[SDBUFFSIZE];
 
@@ -80,6 +89,7 @@ static void RTC_Config(void);
 static void RTC_DateConfig(void);
 static void GPIO_Config(void);
 static void RTC_AlarmConfig(void);
+static void SendCmdToModem(char *buffRx);
 
 //void RTC_IRQHandler(void);
 void USART1_IRQHandler(void);
@@ -95,18 +105,31 @@ int StrToInt(char *ptr);
 int main( void) 
 {
   SystemInit();
-  GPIO_Config();        // После конфигурации сразу включить удержание питания!!!
-  SysTick_Config(SystemCoreClock / 1000);
   RCC_Config();
+  GPIO_Config();        // После конфигурации сразу включить удержание питания!!!
+  //PWRHOLD;
+  SysTick_Config(SystemCoreClock / 1000);
+  //MODEMON;
+  USART1_Config();
+  USART2_Config();
   RTC_Config();
   //RTC_DateConfig();
-  //RTC_AlarmConfig();
-  USART2_Config();
-  //printf("Start!");
+  RTC_AlarmConfig();
+  printf("Start!");
   //LEDON;
   __enable_irq ();
   //MODEMON;
-  
+  Delay(950000);
+  //sprintf(cmdTxBuff, "A1223P\r");
+  //SendCmdToModem("ATE0\r");
+  //Delay(9500000);
+  //printf(cmdRxBuff);
+  //while (cntCmdRx < 11){}
+  //cntCmdRx = 0;
+  //while ((strncmp(cmdRxBuff, "ATE0\r\r\nOK\r\n", 11))){}
+  //memset(cmdRxBuff, '\0', 10);
+  //while ((strncmp(&cmdRxBuff[7], "OK", 2))){}
+  //printf("Success: echo off");
 
 
   //NVIC_EnableIRQ (USART1_IRQn);
@@ -208,8 +231,8 @@ int main( void)
   __enable_irq ();*/
   while(1) 
   {
-          uint32_t subSec = RTC_GetSubSecond();
-      printf("%d\r\n", subSec);
+          //uint32_t subSec = RTC_GetSubSecond();
+      //printf("%d\r\n", subSec);
     //uint32_t timeLoopStop = 0;
     //cntTimeDelay = 2000;
     //while ((strncmp(cmdRxBuff, "OK", 2)))
@@ -217,46 +240,40 @@ int main( void)
     //printf("Good job!");
     //memset(cmdRxBuff, 0, BUFFSIZE);
     //cntCmdRx = 0x00;
-    /*ptr2 = cmd; 
-    if (num == 0)
+    //ptr2 = cmd; 
+    //if (num == 0)
+    //{
+    //if (strncmp((userRxBuff, "st\r\n", 11))
+    //{
+      //RTC_Config();
+      //RTC_AlarmConfig();
+      //cntUserRx = 0;
+      //memset(userTxBuff,'\0',4);
+    //}
+    /*switch (userRxBuff[0])
     {
-    switch (cmd[0])
-    {
-    case 't':
-        switch (cmd[1])
+    case time:
+        switch (userRxBuff[1])
          {
                   // command set time
-         case 's': 
-                                rtc.mday = atoi(&cmd[3]);
-				rtc.month = atoi(&cmd[6]);
-				rtc.year = atoi(&cmd[9]);
-                                rtc.hour = atoi(&cmd[14]); 
-                                rtc.min = atoi(&cmd[17]);
-				rtc.sec = 00;
-                                rtc_settime(&rtc);
-                   memset(cmd,'\0',10);
+         case set: 
+                   RTC_Config();
+                   RTC_AlarmConfig();
                    break;
                    // Command get time
-         case 'g': rtc_gettime(&rtc);
-                   sprintf(Line, "%u/%u/%u %2u:%02u:%02u \0", rtc.mday, rtc.month, rtc.year, rtc.hour, rtc.min, rtc.sec);
-                   UART1_Tx_Str(Line);
-                   memset(cmd,'\0',10);
+         case get: RTC_TimeTypeDef  RTC_TimeStruct;
+                   RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
+                   sprintf(
+                           userTxBuff, 
+                           "\r\n%2u:%02u:%02u\r\n",  
+                           RTC_TimeStruct.RTC_Hours, 
+                           RTC_TimeStruct.RTC_Minutes, 
+                           RTC_TimeStruct.RTC_Seconds
+                           );
+                   printf(userTxBuff);
+                   memset(userTxBuff,'\0',10);
                    break;
          }
-        break;
-    case 'w':
-      switch (cmd[1])
-      {
-        case 'u': sleep = 0;
-                  UART1_Tx_Str("cmd_wu"); 
-                  memset(cmd,'\0',10); 
-                  break;
-        case 'd': UART1_Tx_Str("cmd_wd"); 
-                  memset(cmd,'\0',10); 
-                  sleep = 1;
-                  break;
-        } break;
-    }
     }*/
   }
 }
@@ -279,20 +296,21 @@ void InitIRQ(void)
   //Timer interrupt
   
 } 
-
+/******************************************************************************
+                        SysTick_Handler
+*******************************************************************************/
 void SysTick_Handler(void)
 {
   cntTimeMs += 1;
   //LEDON;
-  if (cntTimeMs == 1000)
+  if (cntTimeMs == 5000)
   {
-      LEDXOR;
+      //LEDXOR;
       RTC_TimeTypeDef  RTC_TimeStruct;
       //GPIO_InitTypeDef GPIO_InitStructure;
       //GPIOB -> ODR ^= GPIO_ODR_15;
       RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
-
-      //printf("\n\r%02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
+      printf("\n\r%02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       //sprintf(Line, "%u/%u/%u %2u:%02u:%02u \0", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       /* Loop until the end of transmission */
       /* The software must wait until TC=1. The TC flag remains cleared during all data
@@ -392,24 +410,21 @@ void EXTI9_5_IRQHandler(void)
 }
 
 /******************************************************************************
-                        USART1 interrupt handler 
+                        USART1_IRQHandler 
 *******************************************************************************/
 void USART1_IRQHandler(void)
 {
-  while (cmdRxBuff[cntCmdRx] != '\r' )
-  {
    if(USART_GetITStatus(USART1, USART_IT_RXNE) == SET)
     {
-      LEDON;
+      //LEDON;
       /* Read one byte from the receive data register */
       cmdRxBuff[cntCmdRx++] = USART_ReceiveData(USART1);
-      if(cntCmdRx == BUFFSIZE)
-      {
+      //if(cntCmdRx == BUFFSIZE)
+      //{
         /* Disable the EVAL_COM1 Receive interrupt */
-        cntCmdRx = 0x00;
-      }
+        //cntCmdRx = 0x00;
+      //}
     }
-  }
 
     /*if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
     {   
@@ -424,20 +439,16 @@ void USART1_IRQHandler(void)
     }*/
 }
 /******************************************************************************
-                        USART2 interrupt handler 
+                        USART2_IRQHandler 
 *******************************************************************************/
 void USART2_IRQHandler(void)
 {
-  while ((cmdRxBuff[cntCmdRx-1] != '\r'))
-  {
    if(USART_GetITStatus(USART2, USART_IT_RXNE) == SET)
     {
       /* Read one byte from the receive data register */
-      cmdRxBuff[cntCmdRx++] = USART_ReceiveData(USART2);
+      userRxBuff[cntUserRx++] = USART_ReceiveData(USART2);
     }
-   if (cntTimeDelay == 0){break;}
-  }
-  
+   //if (cntTimeDelay == 0){break;}
   //LEDOFF;
     /*if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
     {   
@@ -521,7 +532,9 @@ void InitGPIO( void)
   
   
 }
-
+/******************************************************************************
+                        RCC_Config
+*******************************************************************************/
 static void RCC_Config(void)
 {
   /* Enable GPIO clock */
@@ -534,10 +547,11 @@ static void RCC_Config(void)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
   
 }
-
+/******************************************************************************
+                        GPIO_Config
+*******************************************************************************/
 static void GPIO_Config(void)
 {
-  
   GPIO_InitTypeDef GPIO_InitStructure;
   
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
@@ -570,7 +584,7 @@ static void GPIO_Config(void)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
-  /* PWR, LED, MODEM Pin configuration ************************************************/
+  /* PWR, LED, MODEM Pin configuration ****************************************/
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT; //(_OUT, _AF, _AN)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //(_NOPULL, _UP)
@@ -582,36 +596,30 @@ static void GPIO_Config(void)
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
 }
-
+/******************************************************************************
+                        RTC_Config
+*******************************************************************************/
 static void RTC_Config(void)
- {
+{
     RTC_InitTypeDef RTC_InitStructure;
     RTC_TimeTypeDef  RTC_TimeStruct;
-
     /* Allow access to RTC */
     PWR_BackupAccessCmd(ENABLE);
-    
     /* Reset RTC Domain */
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
-
     /* Enable the LSE OSC */
     RCC_LSEConfig(RCC_LSE_ON);
-
     /* Wait till LSE is ready */  
     while(RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) {}
-    
-
     /* Select the RTC Clock Source */
     RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
-
     /* Configure the RTC data register and RTC prescaler */
     /* ck_spre(1Hz) = RTCCLK(LSI) /(AsynchPrediv + 1)*(SynchPrediv + 1)*/
     RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
     RTC_InitStructure.RTC_SynchPrediv  = 0xFF;
     RTC_InitStructure.RTC_HourFormat   = RTC_HourFormat_24;
     RTC_Init(&RTC_InitStructure);
-    
     /* Set the time to 00h 00mn 00s AM */
     RTC_TimeStruct.RTC_H12     = RTC_H12_AM;
     RTC_TimeStruct.RTC_Hours   = 0x00;
@@ -623,16 +631,21 @@ static void RTC_Config(void)
     /* Enable the RTC Clock */
     RCC_RTCCLKCmd(ENABLE);
     /* Wait for RTC APB registers synchronisation */
-    RTC_WaitForSynchro();
-    
- }
-
+    RTC_WaitForSynchro();   
+}
+/******************************************************************************
+                        RTC_DateConfig
+*******************************************************************************/
 static void RTC_DateConfig(void)
 {
   RTC_DateTypeDef RTC_DateStructure;
   RTC_DateStructInit(&RTC_DateStructure);
+  
   RTC_SetDate(RTC_Format_BCD, &RTC_DateStructure);
 }
+/******************************************************************************
+                        RTC_AlarmConfig
+*******************************************************************************/
 static void RTC_AlarmConfig(void)
 {
   EXTI_InitTypeDef EXTI_InitStructure;
@@ -644,7 +657,7 @@ static void RTC_AlarmConfig(void)
   RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_H12_AM;
   RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = 0x0A;
   RTC_AlarmStructure.RTC_AlarmDateWeekDaySel    = RTC_AlarmDateWeekDaySel_Date;
-  RTC_AlarmStructure.RTC_AlarmDateWeekDay       = RTC_Weekday_Monday;    
+  //RTC_AlarmStructure.RTC_AlarmDateWeekDay       = RTC_Weekday_Monday;    
   RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_DateWeekDay;
   
   RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
@@ -671,7 +684,9 @@ static void RTC_AlarmConfig(void)
   RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
   RTC_ClearITPendingBit(RTC_IT_ALRA);
 } 
-
+/******************************************************************************
+                        RTC_IRQHandler
+*******************************************************************************/
 void RTC_IRQHandler(void)
 {
   /* Check on the AlarmA flag and on the number of interrupts per Second (60*8) */
@@ -679,13 +694,14 @@ void RTC_IRQHandler(void)
   { 
     /* ALARM is enabled */
     ALARM_Occured = 1;
+    LEDXOR;
     /* Clear RTC AlarmA Flags */
     RTC_ClearITPendingBit(RTC_IT_ALRA);
     EXTI_ClearITPendingBit(EXTI_Line17);
   }  
 }
 /******************************************************************************
----------------------- USART1 Configurating------------------------------------
+                        USART1 Configurating
 *******************************************************************************/
 static void USART1_Config(void)
  {
@@ -700,14 +716,14 @@ static void USART1_Config(void)
   - Parity = No Parity
   - Hardware flow control disabled (RTS and CTS signals)
   - Receive and transmit enabled*/
-  USART_InitStructure.USART_BaudRate = 115200;
+  USART_InitStructure.USART_BaudRate = 9600;
   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   USART_InitStructure.USART_StopBits = USART_StopBits_1;
   USART_InitStructure.USART_Parity = USART_Parity_No;
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx; 
   USART_Init(USART1, &USART_InitStructure);
-  //USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+  USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
   /* NVIC configuration */
   /* Enable the USARTx Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
@@ -715,11 +731,10 @@ static void USART1_Config(void)
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
   /* Enable USART */
-  USART_Cmd(USART1, ENABLE);
-  
+  USART_Cmd(USART1, ENABLE); 
  }
 /******************************************************************************
----------------------- USART2 Configurating------------------------------------
+                          USART2 Configurating
 *******************************************************************************/
 static void USART2_Config(void)
  {
@@ -734,14 +749,14 @@ static void USART2_Config(void)
   - Parity = No Parity
   - Hardware flow control disabled (RTS and CTS signals)
   - Receive and transmit enabled*/
-  USART_InitStructure.USART_BaudRate = 115200;
+  USART_InitStructure.USART_BaudRate = 9600;
   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   USART_InitStructure.USART_StopBits = USART_StopBits_1;
   USART_InitStructure.USART_Parity = USART_Parity_No;
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx; 
   USART_Init(USART2, &USART_InitStructure);
-  
+  USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
   /* NVIC configuration */
   /* Enable the USARTx Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
@@ -749,16 +764,31 @@ static void USART2_Config(void)
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
   /* Enable USART */
-  USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
-  USART_Cmd(USART2, ENABLE);
-  
+  USART_Cmd(USART2, ENABLE); 
  }
    
-//------------------------------------------------------------------------------
-
-void Delay( unsigned int Val) {
-  for( ; Val != 0; Val--) {
+/******************************************************************************
+                          USART2 Configurating
+*******************************************************************************/
+void Delay( unsigned int Val) 
+{
+  for( ; Val != 0; Val--) 
+  {
     __NOP();
+  }
+}
+/******************************************************************************
+                          SendCmdToModem
+*******************************************************************************/
+static void SendCmdToModem(char *buffRx)
+{
+  uint8_t buffRxSize = strlen(buffRx);
+  uint8_t byteNumber = 0;
+  while(buffRxSize--)
+  {
+    USART_SendData(USART1, (uint8_t) buffRx[byteNumber++]);
+    /* Loop until transmit data register is empty */
+    while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET) {}
   }
 }
 /*uint8_t ToTimeProc(uint32_t timeCount){
@@ -767,7 +797,9 @@ void Delay( unsigned int Val) {
     return 0;
   else return 1;
 }*/
-
+/******************************************************************************
+                          PUTCHAR_PROTOTYPE
+*******************************************************************************/
 PUTCHAR_PROTOTYPE
 {
   /* Place your implementation of fputc here */
