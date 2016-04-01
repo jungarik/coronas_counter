@@ -47,10 +47,13 @@ __IO uint8_t nRead, nWritten;   // Возвращаемые значения прочитаных и записанных
   размер 255 символов (байт)*/
 char cmdRxBuff[BUFFSIZE];
 char cmdTxBuff[BUFFSIZE];
+
 char userRxBuff[BUFFSIZE];
 char userTxBuff[BUFFSIZE];
+
 __IO uint8_t cntCmdRx = 0;
 __IO uint8_t cntUserRx = 0;
+
 //__IO uint8_t SD_RdWrBuff[SDBUFFSIZE];     
 //__IO uint8_t SD_RdBuff[SDBUFFSIZE];
 
@@ -69,18 +72,13 @@ FIL file;				/* File objects */
 //DIR dir;					/* Directory object */
 __IO uint32_t cntTimeMs;
 __IO uint32_t cntTimeDelay;
-char cmd[256];
-int num = 0;
 
-__IO uint32_t cnt_puls_pos = 0;
-__IO uint32_t cnt_puls_neg = 0;
+__IO uint32_t counterPositive = 0;
+__IO uint32_t counterNegative = 0;
 volatile unsigned char flag =0;
 //------------------------------------------------------------------------------
-void InitSysClock(void);
-void InitGPIO(void);
 void Delay(unsigned int Val);
 void InitIRQ(void);
-void InitSysTick(void);
 
 static void RCC_Config(void);
 static void USART1_Config(void);
@@ -89,6 +87,7 @@ static void RTC_Config(void);
 static void RTC_DateConfig(void);
 static void GPIO_Config(void);
 static void RTC_AlarmConfig(void);
+static void EXTI4_15_Config(void);
 
 static void SendCmdToModem(char *buffRx);
 static void SetNextStartTime(void);
@@ -101,38 +100,34 @@ void SysTick_Handler(void);
 //-------------------------------------------------------------------
 //void RTC_IRQHandler(void)
 //static void USART_SendString();
-void InitIWDG(void);
 void put_rc(FRESULT rc);
 int StrToInt(char *ptr);
 //------------------------------------------------------------------------------
 int main( void) 
 {
+  /* Начальная конфигурация устройства */
   SystemInit();
   RCC_Config();
-  GPIO_Config();        // После конфигурации сразу включить удержание питания!!!
+  GPIO_Config(); 
+  
+  /* После конфигурации GPIO сразу включить удержание питания!!! */
   PWRHOLD;
+  
+  /* Внешние прерывания */
+  EXTI4_15_Config();
+  
   SysTick_Config(SystemCoreClock / 1000);
-  //MODEMON;
   USART1_Config();
   USART2_Config();
   RTC_Config();
   RTC_AlarmConfig();
-  SetNextStartTime();
-  printf("Start!");
+  
+  /* Установка следующего времени запуска устроуства по умолчанию, 30 сек */
+  //SetNextStartTime();
+  
+  //printf("Start!");
   LEDON;
   __enable_irq ();
-  //MODEMON;
-  //sprintf(cmdTxBuff, "A1223P\r");
-  //SendCmdToModem("ATE0\r");
-  //Delay(9500000);
-  //printf(cmdRxBuff);
-  //while (cntCmdRx < 11){}
-  //cntCmdRx = 0;
-  //while ((strncmp(cmdRxBuff, "ATE0\r\r\nOK\r\n", 11))){}
-  //memset(cmdRxBuff, '\0', 10);
-  //while ((strncmp(&cmdRxBuff[7], "OK", 2))){}
-  //printf("Success: echo off");
-
 
   //NVIC_EnableIRQ (USART1_IRQn);
   //NVIC_EnableIRQ (EXTI9_5_IRQn);
@@ -305,47 +300,48 @@ void InitIRQ(void)
 *******************************************************************************/
 void SysTick_Handler(void)
 {
+  /* Счетчик для отсечта времени секунд */
   cntTimeMs += 1;
-  //LEDON;
+
   if (cntTimeMs == 1000)
   {
+      /* Сбросить счетчик секунд */
       cntTimeMs = 0x00;
-      //LEDXOR;
-      RTC_TimeTypeDef  RTC_TimeStruct;
-      //GPIO_InitTypeDef GPIO_InitStructure;
-      //GPIOB -> ODR ^= GPIO_ODR_15;
-      RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
-      printf("\n\r%02d %02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_H12, RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
       
-      PWROFF;
-      //sprintf(Line, "%u/%u/%u %2u:%02u:%02u \0", RTC_TimeStruct.RTC_Hours, RTC_TimeStruct.RTC_Minutes, RTC_TimeStruct.RTC_Seconds);
-      /* Loop until the end of transmission */
-      /* The software must wait until TC=1. The TC flag remains cleared during all data
-         transfers and it is set by hardware at the last frame’s end of transmission*/
-      //while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET) {}
-      
-      //ToTimeProc();
-     //owerOFF; // Выключить питание устройства. 
+      /* Проверить наличие импульсов в каналах */
+      /* если нету выключить питание (устройство) */
+      if ((!counterNegative)&&(!counterPositive))
+      {
+        /*Получить время для отправки в консоль перед выкл (не обязательно)*/
+        RTC_TimeTypeDef  RTC_TimeStruct;
+        RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
+        printf("\n\r%02d %02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_H12, 
+                                              RTC_TimeStruct.RTC_Hours, 
+                                              RTC_TimeStruct.RTC_Minutes, 
+                                              RTC_TimeStruct.RTC_Seconds
+                                              );
+        
+        /* Установка следующего времени запуска устроуства по умолчанию, 30 сек */
+        SetNextStartTime();
+        
+        /* Выключаем питание устройства */
+        PWROFF;
+      }
+      else
+      {
+        if (counterPositive)
+        {
+          printf("\n\r Positive: %5u\n\r", counterPositive);
+          counterPositive = 0;
+        }
+        if (counterNegative)
+        {
+          printf("\n\rNegative: %5u\n\r", counterNegative);
+          counterNegative = 0;
+        }
+      }
   }
-  //disk_timerproc();
-  /*if (count_ms == 1000)
-  {
-    count_ms = 0;
-    if ((!cnt_puls_neg)&&(!cnt_puls_pos)&&(!(GPIOB->IDR&GPIO_IDR_12)))
-    {
-      IWDG->KR |= 0x5555;       //enable access to the IWDG_PR and IWDG_RLR registers
-      IWDG->PR |= 0x6;          //divider /128
-      IWDG->RLR |=0xFFF;        //watchdog counter reload value 13000ms
-      IWDG->KR |= 0xCCCC;       //starts the watchdog 
-      // Clear Wake-up flag 
-      PWR->CR |= PWR_CR_CWUF;
-      // Select STANDBY mode 
-      PWR->CR |= PWR_CR_PDDS;
-      // Set SLEEPDEEP bit of Cortex System Control Register 
-      SCB->SCR |= SCB_SCR_SLEEPDEEP;
-      __WFI();
-  } 
-    else
+  /*else
     {
       //создаем файл с текущей датой и время создания 010720151522.txt
       if (cnt_puls_pos)
@@ -403,18 +399,31 @@ void SysTick_Handler(void)
   disk_timerproc();*/
 }
 
-void EXTI9_5_IRQHandler(void)
+void EXTI4_15_IRQHandler(void)
 {
-  Delay(5);
-  if ((EXTI->PR)&EXTI_PR_PR8)
+  //Delay(5);
+  
+  /* Проверка канала прерывания негативных импульсов */
+  if(EXTI_GetITStatus(EXTI_Line5) != RESET)
   {
-    cnt_puls_pos += 1;
+    /* Toggle LED2 */
+    counterNegative += 1;
+    
+    /* Clear the EXTI line 0 pending bit */
+    EXTI_ClearITPendingBit(EXTI_Line5);
   }
-  else cnt_puls_neg += 1;
-  EXTI->PR |= EXTI_PR_PR8;
-  EXTI->PR |= EXTI_PR_PR6;
+  
+  /* Проверка канала прерывания позитивных импульсов */
+  if(EXTI_GetITStatus(EXTI_Line8) != RESET)
+  {
+    /* Toggle LED2 */
+    counterPositive += 1;
+    
+    /* Clear the EXTI line 0 pending bit */
+    EXTI_ClearITPendingBit(EXTI_Line8);
+  }
+  
 }
-
 /******************************************************************************
                         USART1_IRQHandler 
 *******************************************************************************/
@@ -449,7 +458,6 @@ void USART2_IRQHandler(void)
 static void RCC_Config(void)
 {
   /* Enable GPIO clock */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB, ENABLE);
   /* Enable the PWR clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   /* Enable USART1 Clock */
@@ -463,19 +471,15 @@ static void RCC_Config(void)
 *******************************************************************************/
 static void GPIO_Config(void)
 {
+  
   GPIO_InitTypeDef GPIO_InitStructure;
   
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
-  
-  /*GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);*/
-  
+  /* Enable GPIO clock */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | 
+                        RCC_AHBPeriph_GPIOB | 
+                        RCC_AHBPeriph_GPIOC, 
+                        ENABLE);
+ 
   /* USART1 Pins configuration ************************************************/
   /* Connect pin to Periph */
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_1); 
@@ -515,11 +519,17 @@ static void GPIO_Config(void)
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
   /*STOP Pin configuration ************************************************/
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4; //(_0 ... _15)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN; //(_OUT, _AF, _AN)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; //(_NOPULL, _UP)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4; //(_0 ... _15)
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //(_PP - push/pull, _OD - open drain)
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  
+  /* Configure PB5 and PB8 pins as input floating */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5|GPIO_Pin_8;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   
 }
@@ -566,7 +576,6 @@ static void RTC_DateConfig(void)
 {
   RTC_DateTypeDef RTC_DateStructure;
   RTC_DateStructInit(&RTC_DateStructure);
-  
   RTC_SetDate(RTC_Format_BCD, &RTC_DateStructure);
 }
 /******************************************************************************
@@ -575,7 +584,6 @@ static void RTC_DateConfig(void)
 static void RTC_AlarmConfig(void)
 {
   EXTI_InitTypeDef EXTI_InitStructure;
-  RTC_AlarmTypeDef RTC_AlarmStructure;
   NVIC_InitTypeDef NVIC_InitStructure;
 
   /*RTC_AlarmStructInit(&RTC_AlarmStructure);
@@ -598,12 +606,14 @@ static void RTC_AlarmConfig(void)
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
-    /* Enable the RTC Alarm Interrupt */
+  
+  /* Enable the RTC Alarm Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel            = RTC_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPriority    = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd         = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
   
+  /* Output AlarmA Pin configuration */
   RTC_OutputConfig(RTC_Output_AlarmA, RTC_OutputPolarity_High);
   RTC_OutputTypeConfig(RTC_OutputType_PushPull);
 
@@ -770,9 +780,43 @@ static void USART2_Config(void)
   /* Enable USART */
   USART_Cmd(USART2, ENABLE); 
  }
+/******************************************************************************
+                          EXTI4_15 Configurating
+*******************************************************************************/
+static void EXTI4_15_Config(void)
+{
+  EXTI_InitTypeDef   EXTI_InitStructure;
+  NVIC_InitTypeDef   NVIC_InitStructure;
+  
+  /* Enable SYSCFG clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+  
+  /* Connect EXTI8 Line to PB5 pin */
+  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource5);
+  
+  /* Connect EXTI13 Line to PB8 pin */
+  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource8);
+  
+  /* Configure EXTI5 line */
+  EXTI_InitStructure.EXTI_Line = EXTI_Line5;  
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStructure);
+  
+  /* Configure EXTI8 line */
+  EXTI_InitStructure.EXTI_Line = EXTI_Line8;
+  EXTI_Init(&EXTI_InitStructure);
+  
+  /* Enable and set EXTI4_15 Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+}
    
 /******************************************************************************
-                          USART2 Configurating
+                          DELAY
 *******************************************************************************/
 void Delay( unsigned int Val) 
 {

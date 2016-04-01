@@ -1882,6 +1882,9 @@
       <name>$PROJ_DIR$\inc\stm32f0xx_spi.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\inc\stm32f0xx_syscfg.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\inc\stm32f0xx_usart.h</name>
     </file>
     <file>
@@ -1931,6 +1934,9 @@
     </file>
     <file>
       <name>$PROJ_DIR$\src\stm32f0xx_spi.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\src\stm32f0xx_syscfg.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\src\stm32f0xx_usart.c</name>
