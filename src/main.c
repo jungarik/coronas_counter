@@ -89,8 +89,10 @@ static void RTC_Config(void);
 static void RTC_DateConfig(void);
 static void GPIO_Config(void);
 static void RTC_AlarmConfig(void);
+
 static void SendCmdToModem(char *buffRx);
 static void SetNextStartTime(void);
+static void SetCurrentTime(void);
 
 //void RTC_IRQHandler(void);
 void USART1_IRQHandler(void);
@@ -113,15 +115,13 @@ int main( void)
   //MODEMON;
   USART1_Config();
   USART2_Config();
+  RTC_Config();
+  RTC_AlarmConfig();
   SetNextStartTime();
-  //RTC_Config();
-  //RTC_DateConfig();
-  //RTC_AlarmConfig();
   printf("Start!");
   LEDON;
   __enable_irq ();
   //MODEMON;
-  Delay(950000);
   //sprintf(cmdTxBuff, "A1223P\r");
   //SendCmdToModem("ATE0\r");
   //Delay(9500000);
@@ -248,12 +248,12 @@ int main( void)
     if ((strncmp(userRxBuff, "st\r\n", 4)) == 0)
     {
       LEDXOR;
-      RTC_Config();
-      RTC_AlarmConfig();
+      SetCurrentTime();
       cntUserRx = 0;
       memset(userRxBuff,'\0',4);
       //SysTick_Config(SystemCoreClock / 1000);
     }
+    
     /*switch (userRxBuff[0])
     {
     case time:
@@ -431,18 +431,6 @@ void USART1_IRQHandler(void)
         //cntCmdRx = 0x00;
       //}
     }
-
-    /*if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
-    {   
-      // Write one byte to the transmit data register 
-      USART_SendData(USART1, TxBuffer[TxCount++]);
-
-      if(TxCount == NbrOfDataToTransfer)
-      {
-        // Disable the EVAL_COM1 Transmit interrupt 
-        USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
-      }
-    }*/
 }
 /******************************************************************************
                         USART2_IRQHandler 
@@ -454,89 +442,6 @@ void USART2_IRQHandler(void)
       /* Read one byte from the receive data register */
       userRxBuff[cntUserRx++] = USART_ReceiveData(USART2);
     }
-   //if (cntTimeDelay == 0){break;}
-  //LEDOFF;
-    /*if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
-    {   
-      // Write one byte to the transmit data register 
-      USART_SendData(USART1, TxBuffer[TxCount++]);
-
-      if(TxCount == NbrOfDataToTransfer)
-      {
-        // Disable the EVAL_COM1 Transmit interrupt 
-        USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
-      }
-    }*/
-}
-
-void InitGPIO( void) 
-{
-  // Enable PORTB Periph clock  
-  //RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
- // RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-  
-  //For Enter to Debug Mode PB12 PIN25 Input, resistor Pull-Down
-  /*GPIOB->CRH &= ~(GPIO_CRH_MODE12 | GPIO_CRH_CNF12); // reset config PortB8
-  GPIOB->CRH |= GPIO_CRH_CNF12_1;
-  GPIOB->BSRR = GPIO_BSRR_BS12;
-  //For Ext.Interrupt PB8 Input PIN45, resistor Pull-Down
-  GPIOB->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8); // reset config PortB8
-  GPIOB->CRH |= GPIO_CRH_CNF8_1;
-  GPIOB->BSRR = GPIO_BSRR_BS8;*/
-  
-  /* Config PB7 PIN43 For Power Input Part*/
-  /*GPIOB->CRL &= ~(GPIO_CRL_MODE7 | GPIO_CRL_CNF7); // reset config PortB8
-  GPIOB->CRL |= GPIO_CRL_MODE7_1;
-  //GPIOB->CRL = GPIO_CRL_CNF7_1;
-  GPIOB->BSRR = GPIO_BSRR_BS7;*/
-  
-  /*For Ext.Interrupt PB6 PIN42 Input, resistor Pull-Down*/
-  /*GPIOB->CRL &= ~(GPIO_CRL_MODE6 | GPIO_CRL_CNF6);
-  GPIOB->CRL |= GPIO_CRL_CNF6_1;
-  //GPIOB->BSRR = GPIO_BSRR_BS6;*/
-  
-  /* Config PortB 0*/
-  /*GPIOB->CRL &= ~(GPIO_CRL_MODE0 | GPIO_CRL_CNF0); // reset config PortB0
-  GPIOB->CRL |= GPIO_CRL_MODE0_1;
-  GPIOB->BSRR = GPIO_BSRR_BS0;)*/
-  
-  // Enable PORTC Periph clock  
-  //RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;*/
-  // For GREEN LED PC10 Output
-  /*GPIOB->MODER &= ~GPIO_MODER_MODER15;
-  GPIOB->MODER |= GPIO_MODER_MODER15_0;
-  GPIOA->MODER &= ~GPIO_MODER_MODER10;
-  GPIOA->MODER |= GPIO_MODER_MODER10_0;*/
-  // Enable PORTA Periph clock
-  /*RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN;;
-  
-  GPIOA->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8);
-  GPIOA->CRH |= GPIO_CRH_CNF8_1;         //PA9 alternate function output Push-pull
-  GPIOA->CRH |= GPIO_CRH_MODE8_0;       //PA9 output mode, max speed 10 MHz
-  
-  //For UART. PA9 Output, PA10 Input
-  GPIOA->CRH &= ~(GPIO_CRH_MODE9 | GPIO_CRH_CNF9);
-  GPIOA->CRH &= ~(GPIO_CRH_MODE10 | GPIO_CRH_CNF10);
-  GPIOA->CRH |= GPIO_CRH_CNF9_1;         //PA9 alternate function output Push-pull
-  GPIOA->CRH |= GPIO_CRH_MODE9_0;       //PA9 output mode, max speed 10 MHz
-  GPIOA->CRH |= GPIO_CRH_CNF10_1 ;        //PA10 input with pull-up / pull-down */
-  //For RF sleep mode PA12 Output, Push-Pull
-  /*GPIOA->CRH &= ~(GPIO_CRH_MODE12 | GPIO_CRH_CNF12);
-  GPIOA->CRH |= GPIO_CRH_MODE12_1;
-  GPIOA->BSRR = GPIO_BSRR_BS12;*/
-  //For RF sleep mode PA8 Output, Push-Pull
-  /*GPIOA->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8);
-  GPIOA->CRH |= GPIO_CRH_MODE8_1;
-  GPIOA->BSRR = GPIO_BSRR_BS8;*/
-  //For SPI mode PA4, PA5, PA7 - output, PA6 - input
-  /*GPIOA->CRL &= ~(GPIO_CRL_MODE4 | GPIO_CRL_CNF4 | GPIO_CRL_MODE5 | GPIO_CRL_CNF5 |
-                  GPIO_CRL_MODE6 | GPIO_CRL_CNF6 | GPIO_CRL_MODE7 | GPIO_CRL_CNF7 ); //Reset PA4, PA5, PA7, PA6
-  GPIOA->CRL |= GPIO_CRL_MODE4_0 | GPIO_CRL_CNF4_1      //PA4 alternate function output Push-pull SPI - CS Out
-              | GPIO_CRL_MODE5_0 | GPIO_CRL_CNF5_1      //PA5 alternate function output Push-pull SPI - SCLK OUT
-              | GPIO_CRL_MODE7_0 | GPIO_CRL_CNF7_1      //PA7 alternate function output Push-pull SPI - MOSI OUT
-              | GPIO_CRL_CNF6_1;                        //PA6 PA10 input with pull-up / pull-down SPI - MISO IN*/
-  
-  
 }
 /******************************************************************************
                         RCC_Config
@@ -563,6 +468,13 @@ static void GPIO_Config(void)
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
+  
+  /*GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);*/
   
   /* USART1 Pins configuration ************************************************/
   /* Connect pin to Periph */
@@ -617,34 +529,33 @@ static void GPIO_Config(void)
 static void RTC_Config(void)
 {
     RTC_InitTypeDef RTC_InitStructure;
-    RTC_TimeTypeDef  RTC_TimeStruct;
+    
     /* Allow access to RTC */
     PWR_BackupAccessCmd(ENABLE);
+    
     /* Reset RTC Domain */
-    RCC_BackupResetCmd(ENABLE);
-    RCC_BackupResetCmd(DISABLE);
+    //RCC_BackupResetCmd(ENABLE);
+    //RCC_BackupResetCmd(DISABLE);
+    
     /* Enable the LSE OSC */
     RCC_LSEConfig(RCC_LSE_ON);
+    
     /* Wait till LSE is ready */  
     while(RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) {}
+    
     /* Select the RTC Clock Source */
     RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+    
     /* Configure the RTC data register and RTC prescaler */
     /* ck_spre(1Hz) = RTCCLK(LSI) /(AsynchPrediv + 1)*(SynchPrediv + 1)*/
     RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
     RTC_InitStructure.RTC_SynchPrediv  = 0xFF;
     RTC_InitStructure.RTC_HourFormat   = RTC_HourFormat_12;
     RTC_Init(&RTC_InitStructure);
-    /* Set the time to 00h 00mn 00s AM */
-    RTC_TimeStruct.RTC_H12     = RTC_H12_AM;
-    RTC_TimeStruct.RTC_Hours   = 0x00;
-    RTC_TimeStruct.RTC_Minutes = 0x00;
-    RTC_TimeStruct.RTC_Seconds = 0x00;
-    
-    RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
     
     /* Enable the RTC Clock */
     RCC_RTCCLKCmd(ENABLE);
+    
     /* Wait for RTC APB registers synchronisation */
     RTC_WaitForSynchro();   
 }
@@ -667,7 +578,7 @@ static void RTC_AlarmConfig(void)
   RTC_AlarmTypeDef RTC_AlarmStructure;
   NVIC_InitTypeDef NVIC_InitStructure;
 
-  RTC_AlarmStructInit(&RTC_AlarmStructure);
+  /*RTC_AlarmStructInit(&RTC_AlarmStructure);
   
   RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_H12_AM;
   RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = 10;
@@ -677,7 +588,7 @@ static void RTC_AlarmConfig(void)
                                                   RTC_AlarmMask_Hours | 
                                                   RTC_AlarmMask_DateWeekDay;
   
-  RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
+  RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);*/
   
   /* RTC Alarm A Interrupt Configuration */
   /* EXTI configuration */
@@ -721,35 +632,77 @@ void RTC_IRQHandler(void)
 /******************************************************************************
                         SetNextStartTime
 *******************************************************************************/
+static void SetCurrentTime(void)
+{
+    RTC_TimeTypeDef  RTC_TimeStruct;
+  
+    /* Set the time to 00h 00mn 00s AM */
+    RTC_TimeStruct.RTC_H12     = RTC_H12_AM;
+    RTC_TimeStruct.RTC_Hours   = 0x00;
+    RTC_TimeStruct.RTC_Minutes = 0x00;
+    RTC_TimeStruct.RTC_Seconds = 0x00;
+    RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
+}
+/******************************************************************************
+                        SetNextStartTime
+*******************************************************************************/
 static void SetNextStartTime(void)
 {
   /*Получаем текущее время и устанавливаем будильник на 10 сек вперед*/
-    RTC_TimeTypeDef  RTC_currentTimeStruct;
-    RTC_GetTime(RTC_Format_BIN, &RTC_currentTimeStruct);
-    
+  RTC_TimeTypeDef  RTC_currentTimeStruct;
+  RTC_GetTime(RTC_Format_BIN, &RTC_currentTimeStruct);
+  
   /* Настройка будильника на 10 сек вперед*/
-    RTC_AlarmTypeDef RTC_AlarmStructure;
-    RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
-    RTC_AlarmStructInit(&RTC_AlarmStructure);
+  RTC_AlarmTypeDef RTC_AlarmStructure;
+  RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
+  RTC_AlarmStructInit(&RTC_AlarmStructure);
     
-    RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_currentTimeStruct.RTC_H12;
-    if ((RTC_currentTimeStruct.RTC_Seconds + 10) > 59)
-      {
-        RTC_currentTimeStruct.RTC_Seconds = (RTC_currentTimeStruct.RTC_Seconds + 10) - 60;
-      }
-    else RTC_currentTimeStruct.RTC_Seconds = RTC_currentTimeStruct.RTC_Seconds + 10;
+  RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_currentTimeStruct.RTC_H12;
+  if ((RTC_currentTimeStruct.RTC_Seconds + 10) > 59)
+    {
+      RTC_currentTimeStruct.RTC_Seconds = (RTC_currentTimeStruct.RTC_Seconds + 10) - 60;
+    }
+  else RTC_currentTimeStruct.RTC_Seconds = RTC_currentTimeStruct.RTC_Seconds + 10;
 
-    RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = RTC_currentTimeStruct.RTC_Seconds;
-    RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes  = RTC_currentTimeStruct.RTC_Minutes;
-    RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours    = RTC_currentTimeStruct.RTC_Hours;
-    RTC_AlarmStructure.RTC_AlarmDateWeekDaySel    = RTC_AlarmDateWeekDaySel_Date;
-    //RTC_AlarmStructure.RTC_AlarmDateWeekDay       = RTC_Weekday_Monday;    
-    RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_Minutes | 
-                                                    RTC_AlarmMask_Hours | 
-                                                    RTC_AlarmMask_DateWeekDay;
+  RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = RTC_currentTimeStruct.RTC_Seconds;
+  RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes  = RTC_currentTimeStruct.RTC_Minutes;
+  RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours    = RTC_currentTimeStruct.RTC_Hours;
+  RTC_AlarmStructure.RTC_AlarmDateWeekDaySel    = RTC_AlarmDateWeekDaySel_Date;
+    //RTC_AlarmStructure.RTC_AlarmDateWeekDay     = RTC_Weekday_Monday;    
+  RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_Minutes | 
+                                                  RTC_AlarmMask_Hours | 
+                                                  RTC_AlarmMask_DateWeekDay;
     
-    RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
-    RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
+  RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
+  
+  /* Enable the RTC Alarm Interrupt */
+  NVIC_InitTypeDef NVIC_InitStructure;
+  EXTI_InitTypeDef EXTI_InitStructure;
+  
+  EXTI_ClearITPendingBit(EXTI_Line17);
+  EXTI_InitStructure.EXTI_Line = EXTI_Line17;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStructure);
+  
+  /* Enable the RTC Alarm Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel            = RTC_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority    = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd         = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  
+  /* Config Output Pin */
+  RTC_OutputConfig(RTC_Output_AlarmA, RTC_OutputPolarity_High);
+  RTC_OutputTypeConfig(RTC_OutputType_PushPull);
+
+  /* Enable AlarmA interrupt */
+  RTC_ITConfig(RTC_IT_ALRA, ENABLE);
+  RTC_ClearITPendingBit(RTC_IT_ALRA);
+  EXTI_ClearITPendingBit(EXTI_Line17);
+  
+  /* Enable AlarmA */
+  RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
 }
 /******************************************************************************
                         USART1 Configurating
