@@ -54,20 +54,10 @@ char userTxBuff[BUFFSIZE];
 __IO uint8_t cntCmdRx = 0;
 __IO uint8_t cntUserRx = 0;
 
-//__IO uint8_t SD_RdWrBuff[SDBUFFSIZE];     
-//__IO uint8_t SD_RdBuff[SDBUFFSIZE];
-
-//__IO uint8_t CMD_RdWrBuff[CMDBUFFSIZE];
-//__IO uint8_t CMD_RdBuff[CMDBUFFSIZE];
 
 __IO uint8_t ALARM_Occured = 0;
 
-///char Line[256];				/* Console input buffer */
-//BYTE Buff[4096]; //__attribute__ ((aligned (4))) ;	/* Working buffer */
-//char Line_Rx[256];
-
-//RTCTIME rtc;
-//FATFS FatFs;				/* File system object for each logical drive */
+				/* File system object for each logical drive */
 FIL file;				/* File objects */
 //DIR dir;					/* Directory object */
 __IO uint32_t cntTimeMs;
@@ -75,10 +65,11 @@ __IO uint32_t cntTimeDelay;
 
 __IO uint32_t counterPositive = 0;
 __IO uint32_t counterNegative = 0;
+
 volatile unsigned char flag =0;
 //------------------------------------------------------------------------------
 void Delay(unsigned int Val);
-void InitIRQ(void);
+
 
 static void RCC_Config(void);
 static void USART1_Config(void);
@@ -90,8 +81,8 @@ static void RTC_AlarmConfig(void);
 static void EXTI4_15_Config(void);
 
 static void SendCmdToModem(char *buffRx);
-static void SetNextStartTime(void);
-static void SetCurrentTime(void);
+static void SetNextStartTime(RTC_TimeTypeDef  RTC_currentTimeStruct, uint8_t hours, uint8_t minutes, uint8_t seconds);
+static void SetCurrentTime(uint8_t hours, uint8_t minutes, uint8_t seconds);
 
 //void RTC_IRQHandler(void);
 void USART1_IRQHandler(void);
@@ -119,6 +110,7 @@ int main( void)
   SysTick_Config(SystemCoreClock / 1000);
   USART1_Config();
   USART2_Config();
+  RTC_DateConfig();
   RTC_Config();
   RTC_AlarmConfig();
   
@@ -129,31 +121,7 @@ int main( void)
   LEDON;
   __enable_irq ();
 
-  //NVIC_EnableIRQ (USART1_IRQn);
-  //NVIC_EnableIRQ (EXTI9_5_IRQn);
-
-  /*if (rtc_initialize()) 
-    {
-      rtc_gettime(&rtc);
-    } 
-  else 
-  {
-    UART1_Tx_Str("RTC is not available.\n");
-  }
-  // смонтировать диск
- 
-
-  //FATFS *fs;
-  result = f_mount(&FatFs, "", 1);
-  if (result != FR_OK)
-    {
-      put_rc(result);
-    }
-  Delay(950000);
-  InitIRQ();
-  NVIC_EnableIRQ (EXTI9_5_IRQn);
-  // отключаем команду
-  sprintf(Line, "ATE0\r\n");
+  /*sprintf(Line, "ATE0\r\n");
   UART1_Tx_Str(Line);
     Delay(950000);
   Delay(950000);
@@ -200,32 +168,7 @@ int main( void)
   Delay(950000);
   __enable_irq ();*/
  
-  /*FRESULT result;
-  // смонтировать диск
-  FATFS FATFS_Obj;
-  result = f_mount(&FATFS_Obj, "0", 1);
-  if (result != FR_OK)
-    {
-      put_rc(result);
-    }
-  else 
-  
-  printf("Write!!!!!!!!!!!!!!!!");
-  result = f_open(&file, "config.txt", FA_OPEN_EXISTING | FA_READ);
-        if (result == FR_OK) 
-          {
-            //UART1_Tx_Str(buff);
-            int str_lenth = strlen(SD_RdWrBuff);
-            //f_lseek(&file, f_size(&file));
-            //f_lseek(&file, ofs_crs);
-            f_read(&file, buffRdWr, str_lenth, &nWritten);
-            f_close(&file);
-          }
-        else {
-          put_rc(result);
-         }
-    
-  __enable_irq ();*/
+
   while(1) 
   {
           //uint32_t subSec = RTC_GetSubSecond();
@@ -243,7 +186,7 @@ int main( void)
     if ((strncmp(userRxBuff, "st\r\n", 4)) == 0)
     {
       LEDXOR;
-      SetCurrentTime();
+      SetCurrentTime(18, 30, 25); //Arguments: 1st - hours, 2nd - minutes, 3rd - seconds
       cntUserRx = 0;
       memset(userRxBuff,'\0',4);
       //SysTick_Config(SystemCoreClock / 1000);
@@ -276,25 +219,7 @@ int main( void)
     }*/
   }
 }
-//-----------------------------------------------------------------------------
-void InitIRQ(void)
-{
-  //RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
-  //External interrupt
-  //Interrupt INT1 for PORTB.
-  //AFIO->EXTICR[1] |= AFIO_EXTICR2_EXTI6_PB;     
-  EXTI->RTSR |= EXTI_RTSR_TR6;
-  EXTI->IMR |= EXTI_IMR_MR6; 
-  
-  //External interrupt
-  //Interrupt INT2 for PORTB.
-  //AFIO->EXTICR[2] |= AFIO_EXTICR3_EXTI8_PB;     
-  EXTI->FTSR |= EXTI_FTSR_TR8;
-  EXTI->IMR |= EXTI_IMR_MR8;
-  
-  //Timer interrupt
-  
-} 
+
 /******************************************************************************
                         SysTick_Handler
 *******************************************************************************/
@@ -312,17 +237,25 @@ void SysTick_Handler(void)
       /* если нету выключить питание (устройство) */
       if ((!counterNegative)&&(!counterPositive))
       {
-        /*Получить время для отправки в консоль перед выкл (не обязательно)*/
-        RTC_TimeTypeDef  RTC_TimeStruct;
-        RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
-        printf("\n\r%02d %02u:%02u:%02d\n\r", RTC_TimeStruct.RTC_H12, 
-                                              RTC_TimeStruct.RTC_Hours, 
-                                              RTC_TimeStruct.RTC_Minutes, 
-                                              RTC_TimeStruct.RTC_Seconds
-                                              );
+        /*  */
+        RTC_DateTypeDef RTC_CurrentDateStructure;
+        RTC_GetDate(RTC_Format_BIN, &RTC_CurrentDateStructure);
+        
+        /*Получить время для установки следующего времени запуска */
+        RTC_TimeTypeDef  RTC_gettingTimeStruct;
+        RTC_GetTime(RTC_Format_BIN, &RTC_gettingTimeStruct);
         
         /* Установка следующего времени запуска устроуства по умолчанию, 30 сек */
-        SetNextStartTime();
+        SetNextStartTime(RTC_gettingTimeStruct, 0, 0, 10); // Arguments: 0ro - current time, 1st - hours, 2nd - minutes, 3rd - seconds
+        
+        /* Отправить текущее время перед выключением */
+        printf("\n\r%02u/%02u/%2u %02u:%02u:%02d\n\r",  RTC_CurrentDateStructure.RTC_Date,
+                                                        RTC_CurrentDateStructure.RTC_Month,
+                                                        RTC_CurrentDateStructure.RTC_Year,
+                                                        RTC_gettingTimeStruct.RTC_Hours, 
+                                                        RTC_gettingTimeStruct.RTC_Minutes, 
+                                                        RTC_gettingTimeStruct.RTC_Seconds
+                                                      );
         
         /* Выключаем питание устройства */
         PWROFF;
@@ -398,7 +331,9 @@ void SysTick_Handler(void)
   }
   disk_timerproc();*/
 }
-
+/******************************************************************************
+                        EXTI4_15_IRQHandler 
+*******************************************************************************/
 void EXTI4_15_IRQHandler(void)
 {
   //Delay(5);
@@ -480,7 +415,7 @@ static void GPIO_Config(void)
                         RCC_AHBPeriph_GPIOC, 
                         ENABLE);
  
-  /* USART1 Pins configuration ************************************************/
+  /* USART1 Pins configuration */
   /* Connect pin to Periph */
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_1); 
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_1);    
@@ -493,7 +428,7 @@ static void GPIO_Config(void)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);  
   
-  /* USART2 Pins configuration ************************************************/
+  /* USART2 Pins configuration */
   /* Connect pin to Periph */
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_1); 
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_1);    
@@ -506,7 +441,7 @@ static void GPIO_Config(void)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
-  /* PWR, LED Pin configuration ****************************************/
+  /* PWR, LED Pin configuration */
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT; //(_OUT, _AF, _AN)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //(_NOPULL, _UP)
@@ -514,11 +449,11 @@ static void GPIO_Config(void)
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //(_PP - push/pull, _OD - open drain)
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   
-  /*MODEM ON Pin configuration ************************************************/
+  /*MODEM ON Pin configuration */
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
-  /*STOP Pin configuration ************************************************/
+  /*STOP Pin configuration */
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4; //(_0 ... _15)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN; //(_OUT, _AF, _AN)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //(_2MHz, _10MHz, 40MHz)
@@ -560,7 +495,7 @@ static void RTC_Config(void)
     /* ck_spre(1Hz) = RTCCLK(LSI) /(AsynchPrediv + 1)*(SynchPrediv + 1)*/
     RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
     RTC_InitStructure.RTC_SynchPrediv  = 0xFF;
-    RTC_InitStructure.RTC_HourFormat   = RTC_HourFormat_12;
+    RTC_InitStructure.RTC_HourFormat   = RTC_HourFormat_24;
     RTC_Init(&RTC_InitStructure);
     
     /* Enable the RTC Clock */
@@ -575,8 +510,14 @@ static void RTC_Config(void)
 static void RTC_DateConfig(void)
 {
   RTC_DateTypeDef RTC_DateStructure;
+  
   RTC_DateStructInit(&RTC_DateStructure);
-  RTC_SetDate(RTC_Format_BCD, &RTC_DateStructure);
+  RTC_DateStructure.RTC_Date = 2;
+  RTC_DateStructure.RTC_Month = RTC_Month_April;
+  RTC_DateStructure.RTC_WeekDay = RTC_Weekday_Saturday;
+  RTC_DateStructure.RTC_Year = 16;
+  
+  RTC_SetDate(RTC_Format_BIN, &RTC_DateStructure);
 }
 /******************************************************************************
                         RTC_AlarmConfig
@@ -585,18 +526,6 @@ static void RTC_AlarmConfig(void)
 {
   EXTI_InitTypeDef EXTI_InitStructure;
   NVIC_InitTypeDef NVIC_InitStructure;
-
-  /*RTC_AlarmStructInit(&RTC_AlarmStructure);
-  
-  RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_H12_AM;
-  RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = 10;
-  RTC_AlarmStructure.RTC_AlarmDateWeekDaySel    = RTC_AlarmDateWeekDaySel_Date;
-  //RTC_AlarmStructure.RTC_AlarmDateWeekDay       = RTC_Weekday_Monday;    
-  RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_Minutes | 
-                                                  RTC_AlarmMask_Hours | 
-                                                  RTC_AlarmMask_DateWeekDay;
-  
-  RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);*/
   
   /* RTC Alarm A Interrupt Configuration */
   /* EXTI configuration */
@@ -640,43 +569,55 @@ void RTC_IRQHandler(void)
   }  
 }
 /******************************************************************************
-                        SetNextStartTime
+                        SetCurrentTime
 *******************************************************************************/
-static void SetCurrentTime(void)
+static void SetCurrentTime(uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
     RTC_TimeTypeDef  RTC_TimeStruct;
   
-    /* Set the time to 00h 00mn 00s AM */
-    RTC_TimeStruct.RTC_H12     = RTC_H12_AM;
-    RTC_TimeStruct.RTC_Hours   = 0x00;
-    RTC_TimeStruct.RTC_Minutes = 0x00;
-    RTC_TimeStruct.RTC_Seconds = 0x00;
+    /* Set the default time to 00h 00mn 00s or shif to */
+    RTC_TimeStruct.RTC_H12     = 0x00;
+    RTC_TimeStruct.RTC_Hours   = 0x00 + hours;
+    RTC_TimeStruct.RTC_Minutes = 0x00 + minutes;
+    RTC_TimeStruct.RTC_Seconds = 0x00 + seconds;
     RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
 }
 /******************************************************************************
                         SetNextStartTime
 *******************************************************************************/
-static void SetNextStartTime(void)
+static void SetNextStartTime(RTC_TimeTypeDef  RTC_currentTimeStruct, uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
-  /*Получаем текущее время и устанавливаем будильник на 10 сек вперед*/
-  RTC_TimeTypeDef  RTC_currentTimeStruct;
-  RTC_GetTime(RTC_Format_BIN, &RTC_currentTimeStruct);
-  
   /* Настройка будильника на 10 сек вперед*/
   RTC_AlarmTypeDef RTC_AlarmStructure;
   RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
   RTC_AlarmStructInit(&RTC_AlarmStructure);
     
-  RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = RTC_currentTimeStruct.RTC_H12;
-  if ((RTC_currentTimeStruct.RTC_Seconds + 10) > 59)
+  RTC_AlarmStructure.RTC_AlarmTime.RTC_H12      = 0x00;
+  /* Проверить диапазон задания значения СЕКУНД, исправить */
+  //seconds = seconds &  
+  if ((RTC_currentTimeStruct.RTC_Seconds + seconds) > 59)
     {
-      RTC_currentTimeStruct.RTC_Seconds = (RTC_currentTimeStruct.RTC_Seconds + 10) - 60;
+      RTC_currentTimeStruct.RTC_Seconds = (RTC_currentTimeStruct.RTC_Seconds + seconds) - 60;
     }
-  else RTC_currentTimeStruct.RTC_Seconds = RTC_currentTimeStruct.RTC_Seconds + 10;
-
+  else RTC_currentTimeStruct.RTC_Seconds = RTC_currentTimeStruct.RTC_Seconds + seconds;
   RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds  = RTC_currentTimeStruct.RTC_Seconds;
+  
+  /* Проверить диапазон задания значения МИНУТ, исправить */
+  if ((RTC_currentTimeStruct.RTC_Minutes + minutes) > 59)
+    {
+      RTC_currentTimeStruct.RTC_Minutes = (RTC_currentTimeStruct.RTC_Minutes + minutes) - 60;
+    }
+  else RTC_currentTimeStruct.RTC_Minutes = RTC_currentTimeStruct.RTC_Minutes + minutes;
   RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes  = RTC_currentTimeStruct.RTC_Minutes;
+  
+  /* Проверить диапазон задания значения ЧАСОВ, исправить */
+  if ((RTC_currentTimeStruct.RTC_Hours + hours) > 23)
+    {
+      RTC_currentTimeStruct.RTC_Hours = (RTC_currentTimeStruct.RTC_Hours + hours) - 24;
+    }
+  else RTC_currentTimeStruct.RTC_Hours = RTC_currentTimeStruct.RTC_Hours + hours;
   RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours    = RTC_currentTimeStruct.RTC_Hours;
+  
   RTC_AlarmStructure.RTC_AlarmDateWeekDaySel    = RTC_AlarmDateWeekDaySel_Date;
     //RTC_AlarmStructure.RTC_AlarmDateWeekDay     = RTC_Weekday_Monday;    
   RTC_AlarmStructure.RTC_AlarmMask              = RTC_AlarmMask_Minutes | 
@@ -684,32 +625,6 @@ static void SetNextStartTime(void)
                                                   RTC_AlarmMask_DateWeekDay;
     
   RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
-  
-  /* Enable the RTC Alarm Interrupt */
-  NVIC_InitTypeDef NVIC_InitStructure;
-  EXTI_InitTypeDef EXTI_InitStructure;
-  
-  EXTI_ClearITPendingBit(EXTI_Line17);
-  EXTI_InitStructure.EXTI_Line = EXTI_Line17;
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-  EXTI_Init(&EXTI_InitStructure);
-  
-  /* Enable the RTC Alarm Interrupt */
-  NVIC_InitStructure.NVIC_IRQChannel            = RTC_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPriority    = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd         = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-  
-  /* Config Output Pin */
-  RTC_OutputConfig(RTC_Output_AlarmA, RTC_OutputPolarity_High);
-  RTC_OutputTypeConfig(RTC_OutputType_PushPull);
-
-  /* Enable AlarmA interrupt */
-  RTC_ITConfig(RTC_IT_ALRA, ENABLE);
-  RTC_ClearITPendingBit(RTC_IT_ALRA);
-  EXTI_ClearITPendingBit(EXTI_Line17);
   
   /* Enable AlarmA */
   RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
@@ -722,7 +637,7 @@ static void USART1_Config(void)
    USART_InitTypeDef USART_InitStructure;
    NVIC_InitTypeDef NVIC_InitStructure;
    USART_Cmd(USART1, DISABLE);
-  /* USARTx configuration ----------------------------------------------------*/
+  /* USARTx configuration */
   /* USARTx configured as follow:
   - BaudRate = 115200 baud  
   - Word Length = 8 Bits
@@ -755,7 +670,7 @@ static void USART2_Config(void)
    USART_InitTypeDef USART_InitStructure;
    NVIC_InitTypeDef NVIC_InitStructure;
    USART_Cmd(USART2, DISABLE);
-  /* USARTx configuration ----------------------------------------------------*/
+  /* USARTx configuration */
   /* USARTx configured as follow:
   - BaudRate = 115200 baud  
   - Word Length = 8 Bits

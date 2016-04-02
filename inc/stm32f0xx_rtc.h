@@ -219,7 +219,7 @@ typedef struct
 #define	RTC_Weekday_Wednesday          ((uint8_t)0x03)
 #define	RTC_Weekday_Thursday           ((uint8_t)0x04)
 #define	RTC_Weekday_Friday             ((uint8_t)0x05)
-#define	RTC_Weekday_Saturday           ((uint8_t)0x6)
+#define	RTC_Weekday_Saturday           ((uint8_t)0x06)
 #define	RTC_Weekday_Sunday             ((uint8_t)0x07)
 #define IS_RTC_WEEKDAY(WEEKDAY) (((WEEKDAY) == RTC_Weekday_Monday) || \
                                  ((WEEKDAY) == RTC_Weekday_Tuesday) || \
