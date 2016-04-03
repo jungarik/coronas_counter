@@ -45,14 +45,16 @@ __IO uint8_t nRead, nWritten;   // Возвращаемые значения прочитаных и записанных
   информация для записи. Каждая запись с буфера 
   производится в новую строку в файле. Длина строки не превышает 
   размер 255 символов (байт)*/
-char cmdRxBuff[BUFFSIZE];
-char cmdTxBuff[BUFFSIZE];
+char modemRxBuff[BUFFSIZE];
+char modemTxBuff[BUFFSIZE];
+char cmdModemSet = 0;
 
-char userRxBuff[BUFFSIZE];
-char userTxBuff[BUFFSIZE];
+char consoleRxBuff[BUFFSIZE];
+char consoleTxBuff[BUFFSIZE];
+char cmdConsoleSet = 0;
 
-__IO uint8_t cntCmdRx = 0;
-__IO uint8_t cntUserRx = 0;
+uint8_t cntModemRx = 0;
+uint8_t cntConsoleRx = 0;
 
 
 __IO uint8_t ALARM_Occured = 0;
@@ -66,7 +68,7 @@ __IO uint32_t cntTimeDelay;
 __IO uint32_t counterPositive = 0;
 __IO uint32_t counterNegative = 0;
 
-volatile unsigned char flag =0;
+uint32_t timeOfDelay = 0;
 //------------------------------------------------------------------------------
 void Delay(unsigned int Val);
 
@@ -81,8 +83,13 @@ static void RTC_AlarmConfig(void);
 static void EXTI4_15_Config(void);
 
 static void SendCmdToModem(char *buffRx);
+static void SendCmdToConsole(char *buffRx);
 static void SetNextStartTime(RTC_TimeTypeDef  RTC_currentTimeStruct, uint8_t hours, uint8_t minutes, uint8_t seconds);
 static void SetCurrentTime(uint8_t hours, uint8_t minutes, uint8_t seconds);
+static void SetCurrentDate(uint8_t date, uint8_t month, uint8_t year);
+static void ClearBuffer(char* buff);
+
+static void WaitTickTime(uint32_t *waitTime);
 
 //void RTC_IRQHandler(void);
 void USART1_IRQHandler(void);
@@ -110,7 +117,6 @@ int main( void)
   SysTick_Config(SystemCoreClock / 1000);
   USART1_Config();
   USART2_Config();
-  RTC_DateConfig();
   RTC_Config();
   RTC_AlarmConfig();
   
@@ -120,10 +126,18 @@ int main( void)
   //printf("Start!");
   LEDON;
   __enable_irq ();
+  SendCmdToConsole("\r\n> ");
+  /*MODEMON;
+  timeOfDelay = 
+  while()
+  timeOfDelay = 1000; 
+  SendCmdToModem("ATE0\r\n");
+  while ((strncmp(cmdRxBuff, "OK", 2)) && timeOfDelay ){}
+  printf(" 1000s lasted ");*/
 
   /*sprintf(Line, "ATE0\r\n");
   UART1_Tx_Str(Line);
-    Delay(950000);
+  Delay(950000);
   Delay(950000);
   Delay(950000);
   Delay(950000);
@@ -141,15 +155,15 @@ int main( void)
   UART1_Tx_Str(Line);
   Delay(950000);
   Delay(950000);
-  sprintf(Line, "AT+SAPBR=3,1,\"APN\",\"kyivstar.net\"\r\n");
+  sprintf(Line, "AT+SAPBR=3,1,\"APN\",\"internet\"\r\n");
   UART1_Tx_Str(Line);
   Delay(950000);
   Delay(950000);
-  sprintf(Line, "AT+SAPBR=3,1,\"USER\",\"igprs\"\r\n");
+  sprintf(Line, "AT+SAPBR=3,1,\"USER\",\"\"\r\n");
   UART1_Tx_Str(Line);
   Delay(950000);
   Delay(950000);
-  sprintf(Line, "AT+SAPBR=3,1,\"PWD\",\"internet\"\r\n");
+  sprintf(Line, "AT+SAPBR=3,1,\"PWD\",\"\"\r\n");
   UART1_Tx_Str(Line);
   sprintf(Line, "AT+SAPBR=3,1,\"RATE\",3\r\n");
   UART1_Tx_Str(Line);
@@ -171,26 +185,147 @@ int main( void)
 
   while(1) 
   {
-          //uint32_t subSec = RTC_GetSubSecond();
-      //printf("%d\r\n", subSec);
-    //uint32_t timeLoopStop = 0;
-    //cntTimeDelay = 2000;
-    //while ((strncmp(cmdRxBuff, "OK", 2)))
-      //{ if (cntTimeDelay == 0){break;} }
-    //printf("Good job!");
-    //memset(cmdRxBuff, 0, BUFFSIZE);
-    //cntCmdRx = 0x00;
-    //ptr2 = cmd; 
-    //if (num == 0)
-    //{
-    if ((strncmp(userRxBuff, "st\r\n", 4)) == 0)
+    if (cmdConsoleSet)
     {
-      LEDXOR;
-      SetCurrentTime(18, 30, 25); //Arguments: 1st - hours, 2nd - minutes, 3rd - seconds
-      cntUserRx = 0;
-      memset(userRxBuff,'\0',4);
-      //SysTick_Config(SystemCoreClock / 1000);
+    /******************************************************************************
+                            Set time
+    *******************************************************************************/
+        if (!strncmp(consoleRxBuff, "set time", 8) && cmdConsoleSet && cntConsoleRx == 18)
+        {
+          int hours = 0; 
+          int minutes = 0;
+          int seconds = 0;
+          sscanf(consoleRxBuff + 9, "%d %d %d", &hours, &minutes, &seconds);
+          SetCurrentTime(hours, minutes, seconds); //Arguments: 1st - hours, 2nd - minutes, 3rd - seconds
+          
+          memset(consoleRxBuff, '\0', cntConsoleRx);
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+       
+          printf("\r\nOK");
+          SendCmdToConsole("\r\n> ");
+        } 
+    /******************************************************************************
+                            Set date
+    *******************************************************************************/
+        if (!strncmp(consoleRxBuff, "set date", 8) && cmdConsoleSet && cntConsoleRx == 17)
+        {
+          int date = 0; 
+          int month = 0;
+          int year = 0;
+          sscanf(consoleRxBuff + 9, "%d %d %d", &date, &month, &year);
+          SetCurrentDate(date, month, year); //Arguments: 1st - hours, 2nd - minutes, 3rd - seconds
+          
+          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+          
+          printf("\r\nOK");
+          SendCmdToConsole("\r\n> ");
+        }
+        
+        if (strncmp(consoleRxBuff, "get time", 8) == 0 && cmdConsoleSet && cntConsoleRx == 8)
+        {
+          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+          
+          /*  */
+          RTC_DateTypeDef RTC_CurrentDateStructure;
+          RTC_GetDate(RTC_Format_BIN, &RTC_CurrentDateStructure);
+          
+          /*Получить время для установки следующего времени запуска */
+          RTC_TimeTypeDef  RTC_gettingTimeStruct;
+          RTC_GetTime(RTC_Format_BIN, &RTC_gettingTimeStruct);
+          
+          /* Отправить текущее время перед выключением */
+          printf("\r\n\tDate:\t%02u/%02u/%02d", RTC_CurrentDateStructure.RTC_Date,
+                                                RTC_CurrentDateStructure.RTC_Month,
+                                                RTC_CurrentDateStructure.RTC_Year
+                                              );
+          printf("\r\n\tTime:\t%02u:%02u:%02d", RTC_gettingTimeStruct.RTC_Hours, 
+                                                RTC_gettingTimeStruct.RTC_Minutes, 
+                                                RTC_gettingTimeStruct.RTC_Seconds
+                                               );
+          SendCmdToConsole("\r\n> ");
+        }   
+        if (!strncmp(consoleRxBuff, "modem on", 8) && cmdConsoleSet && cntConsoleRx == 8)
+        {
+          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+          
+          MODEMON;
+          printf("\r\nOK");
+          SendCmdToConsole("\r\n> ");
+        } 
+        if (!strncmp(consoleRxBuff, "ATE0", 4) && cmdConsoleSet && cntConsoleRx == 4)
+        {
+          SendCmdToModem("ATE0\r");
+          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+          //printf("\r\nSending command...");
+          //SendCmdToConsole("\r\n> ");
+        } 
+        if (!strncmp(consoleRxBuff, "AT", 2) && cmdConsoleSet && cntConsoleRx == 2)
+        {
+          SendCmdToModem("AT\r");
+          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+          //printf("\r\nSending command...");
+          //SendCmdToConsole("\r\n> ");
+        } 
+        if (cmdConsoleSet)
+        {
+          printf("\r\n\tcntConsoleRx: %2u", cntConsoleRx);
+          printf("\r\n\tUnknown command");
+          //ClearBuffer(consoleRxBuff);
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+          SendCmdToConsole("\r\n> ");
+        }
     }
+    if (cmdModemSet)
+    {
+        if (!strncmp(modemRxBuff, "ATE0", 4) && cmdModemSet && cntModemRx == 10)
+        {
+          printf(modemRxBuff);
+          //memset(modemRxBuff, '\0', cntModemRx);
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          //printf("\r\nOK");
+          SendCmdToConsole("\r\n> ");
+        } 
+        if ((strncmp(modemRxBuff+2, "OK", 2) == 0) && cmdModemSet && cntModemRx == 6)
+        {
+          printf("OK");
+          //memset(modemRxBuff, '\0', cntModemRx);
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          //printf("\r\nOK");
+          SendCmdToConsole("\r\n> ");
+        } 
+        if (!strncmp(modemRxBuff+2, "RING", 4) && cmdModemSet && cntModemRx == 7)
+        {
+          printf(modemRxBuff);
+          //memset(modemRxBuff, '\0', BUFFSIZE);
+          cntModemRx = 0;
+          cmdModemSet = 0;
+        } 
+        if (cmdModemSet)
+        {
+          int i = strncmp(modemRxBuff+2, "OK", 2);
+          printf("\r\n\tCompare strings: %2i", i);
+          printf("\r\n\tcntModemRx: %2u", cntModemRx);
+          printf("\r\n\tUnknown command");
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          SendCmdToConsole("\r\n> ");
+        }
+    }
+    
     
     /*switch (userRxBuff[0])
     {
@@ -227,7 +362,7 @@ void SysTick_Handler(void)
 {
   /* Счетчик для отсечта времени секунд */
   cntTimeMs += 1;
-
+  WaitTickTime( &timeOfDelay );
   if (cntTimeMs == 1000)
   {
       /* Сбросить счетчик секунд */
@@ -249,87 +384,43 @@ void SysTick_Handler(void)
         SetNextStartTime(RTC_gettingTimeStruct, 0, 0, 10); // Arguments: 0ro - current time, 1st - hours, 2nd - minutes, 3rd - seconds
         
         /* Отправить текущее время перед выключением */
-        printf("\n\r%02u/%02u/%2u %02u:%02u:%02d\n\r",  RTC_CurrentDateStructure.RTC_Date,
+        /*printf("\n\r%02u/%02u/%2d %02u:%02u:%02d\n\r",  RTC_CurrentDateStructure.RTC_Date,
                                                         RTC_CurrentDateStructure.RTC_Month,
                                                         RTC_CurrentDateStructure.RTC_Year,
                                                         RTC_gettingTimeStruct.RTC_Hours, 
                                                         RTC_gettingTimeStruct.RTC_Minutes, 
                                                         RTC_gettingTimeStruct.RTC_Seconds
-                                                      );
+                                                      );*/
         
         /* Выключаем питание устройства */
         PWROFF;
       }
       else
       {
+        
         if (counterPositive)
         {
           printf("\n\r Positive: %5u\n\r", counterPositive);
-          counterPositive = 0;
+          sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=P&value=%d\"\r\n", counterPositive);
+          //SendCmdToModem(modemTxBuff);
+          
+          //SendCmdToModem("AT+HTTPACTION=0\r\n");
+          memset(modemTxBuff, '\0', 255);
+          counterPositive = 0;         
         }
         if (counterNegative)
         {
           printf("\n\rNegative: %5u\n\r", counterNegative);
+          sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=N&value=%d\"\r\n", counterPositive);
+          //SendCmdToModem(modemTxBuff);
+          
+          
+          //SendCmdToModem("AT+HTTPACTION=0\r\n");
+          memset(modemTxBuff, '\0', 255);
           counterNegative = 0;
         }
       }
   }
-  /*else
-    {
-      //создаем файл с текущей датой и время создания 010720151522.txt
-      if (cnt_puls_pos)
-      {
-        char buff[255] = {0};
-        result = f_open(&file, "readme.txt", FA_OPEN_EXISTING | FA_WRITE);
-        if (result == FR_OK) 
-          {
-            rtc_gettime(&rtc);
-            sprintf(buff, ".%02u%02u%u%02u%02u%02uP%d", rtc.mday, rtc.month, rtc.year, rtc.hour, rtc.min, rtc.sec, cnt_puls_pos);
-            //UART1_Tx_Str(buff);
-            int str_lenth = strlen(buff);
-            f_lseek(&file, f_size(&file));
-            //f_lseek(&file, ofs_crs);
-            f_write(&file, buff, str_lenth, &nWritten);
-            f_close(&file);
-            sprintf(buff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=P&value=%d\"\r\n", cnt_puls_pos);
-            UART1_Tx_Str(buff);
-            Delay(950000);
-            Delay(950000);
-            sprintf(buff, "AT+HTTPACTION=0\r\n");
-            UART1_Tx_Str(buff);
-            Delay(950000);
-            Delay(950000);
-            Delay(950000);
-            Delay(950000);
-            Delay(950000);
-          }
-        else {put_rc(result);}
-        cnt_puls_pos = 0;
-      }
-      if (cnt_puls_neg)
-      { 
-        char buff[255] = {0};
-        result = f_open(&file, "readme.txt", FA_OPEN_EXISTING | FA_WRITE);
-        if (result == FR_OK) 
-          {
-            rtc_gettime(&rtc);
-            sprintf(buff, ".%02u%02u%u%02u%02u%02uN%d", rtc.mday, rtc.month, rtc.year, rtc.hour, rtc.min, rtc.sec, cnt_puls_neg);
-            UART1_Tx_Str(buff);
-            int str_lenth = strlen(buff);
-            ofs_crs = f_tell(&file);
-            f_lseek(&file, f_size(&file));
-            f_write(&file, buff, str_lenth, &nWritten);
-            //ofs_crs += str_lenth;
-            f_close(&file);
-          }
-        else {put_rc(result);}
-        cnt_puls_neg = 0;
-      }
-      cnt_puls_pos = 0;
-      cnt_puls_neg = 0;
-    }
-  }
-  disk_timerproc();*/
 }
 /******************************************************************************
                         EXTI4_15_IRQHandler 
@@ -365,16 +456,22 @@ void EXTI4_15_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
    if(USART_GetITStatus(USART1, USART_IT_RXNE) == SET)
-    {
-      //LEDON;
+   {
       /* Read one byte from the receive data register */
-      cmdRxBuff[cntCmdRx++] = USART_ReceiveData(USART1);
-      //if(cntCmdRx == BUFFSIZE)
-      //{
-        /* Disable the EVAL_COM1 Receive interrupt */
-        //cntCmdRx = 0x00;
-      //}
-    }
+      uint8_t rxByte = USART_ReceiveData(USART1);
+      
+      if((rxByte == '\n') && (cntModemRx > 1))
+      {
+        modemRxBuff[cntModemRx] = rxByte;
+        cntModemRx += 1;
+        cmdModemSet = 1;
+      }
+      else
+      {
+        modemRxBuff[cntModemRx] = rxByte;
+        cntModemRx += 1;
+      }
+   }
 }
 /******************************************************************************
                         USART2_IRQHandler 
@@ -382,10 +479,24 @@ void USART1_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
    if(USART_GetITStatus(USART2, USART_IT_RXNE) == SET)
-    {
+   {
       /* Read one byte from the receive data register */
-      userRxBuff[cntUserRx++] = USART_ReceiveData(USART2);
-    }
+      uint8_t rxByte = USART_ReceiveData(USART2);
+      
+      if(rxByte == '\r')
+      {
+        consoleRxBuff[cntConsoleRx] = rxByte;
+        cmdConsoleSet = 1;
+      }
+      else
+      {
+            // Эхо, чтобы не печатать вслепую
+        USART_SendData(USART2, (uint8_t)rxByte);
+            // Складываем символ в приёмный буфер
+        consoleRxBuff[cntConsoleRx] = rxByte;
+        cntConsoleRx += 1;
+      }
+   }
 }
 /******************************************************************************
                         RCC_Config
@@ -497,27 +608,12 @@ static void RTC_Config(void)
     RTC_InitStructure.RTC_SynchPrediv  = 0xFF;
     RTC_InitStructure.RTC_HourFormat   = RTC_HourFormat_24;
     RTC_Init(&RTC_InitStructure);
-    
+
     /* Enable the RTC Clock */
     RCC_RTCCLKCmd(ENABLE);
     
     /* Wait for RTC APB registers synchronisation */
     RTC_WaitForSynchro();   
-}
-/******************************************************************************
-                        RTC_DateConfig
-*******************************************************************************/
-static void RTC_DateConfig(void)
-{
-  RTC_DateTypeDef RTC_DateStructure;
-  
-  RTC_DateStructInit(&RTC_DateStructure);
-  RTC_DateStructure.RTC_Date = 2;
-  RTC_DateStructure.RTC_Month = RTC_Month_April;
-  RTC_DateStructure.RTC_WeekDay = RTC_Weekday_Saturday;
-  RTC_DateStructure.RTC_Year = 16;
-  
-  RTC_SetDate(RTC_Format_BIN, &RTC_DateStructure);
 }
 /******************************************************************************
                         RTC_AlarmConfig
@@ -574,20 +670,36 @@ void RTC_IRQHandler(void)
 static void SetCurrentTime(uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
     RTC_TimeTypeDef  RTC_TimeStruct;
-  
     /* Set the default time to 00h 00mn 00s or shif to */
     RTC_TimeStruct.RTC_H12     = 0x00;
     RTC_TimeStruct.RTC_Hours   = 0x00 + hours;
     RTC_TimeStruct.RTC_Minutes = 0x00 + minutes;
     RTC_TimeStruct.RTC_Seconds = 0x00 + seconds;
+    
     RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
+}
+/******************************************************************************
+                        SetCurrentDate
+*******************************************************************************/
+static void SetCurrentDate(uint8_t date, uint8_t month, uint8_t year)
+{
+    RTC_DateTypeDef RTC_DateStructure;
+    
+    //RTC_DateStructInit(&RTC_DateStructure);
+    /* Set the default date to 01d 01m 00y or shif to */
+    RTC_DateStructure.RTC_Date = date;
+    RTC_DateStructure.RTC_Month = month;
+    //RTC_DateStructure.RTC_WeekDay = RTC_Weekday_Saturday;
+    RTC_DateStructure.RTC_Year = year;
+
+    RTC_SetDate(RTC_Format_BIN, &RTC_DateStructure);
 }
 /******************************************************************************
                         SetNextStartTime
 *******************************************************************************/
 static void SetNextStartTime(RTC_TimeTypeDef  RTC_currentTimeStruct, uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
-  /* Настройка будильника на 10 сек вперед*/
+  /* Настройка будильника */
   RTC_AlarmTypeDef RTC_AlarmStructure;
   RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
   RTC_AlarmStructInit(&RTC_AlarmStructure);
@@ -731,7 +843,7 @@ static void EXTI4_15_Config(void)
 }
    
 /******************************************************************************
-                          DELAY
+                          DELAY - 1
 *******************************************************************************/
 void Delay( unsigned int Val) 
 {
@@ -741,25 +853,47 @@ void Delay( unsigned int Val)
   }
 }
 /******************************************************************************
+                          DELAY - 2
+*******************************************************************************/
+static void WaitTickTime(uint32_t *waitTime)
+{
+  if (*waitTime > 0) { *waitTime -= 1; }
+}
+/******************************************************************************
                           SendCmdToModem
 *******************************************************************************/
 static void SendCmdToModem(char *buffRx)
 {
-  uint8_t buffRxSize = strlen(buffRx);
-  uint8_t byteNumber = 0;
-  while(buffRxSize--)
+  //uint8_t buffRxSize = strlen(buffRx);
+  uint8_t byteCounter = 0;
+  while(buffRx[byteCounter])
   {
-    USART_SendData(USART1, (uint8_t) buffRx[byteNumber++]);
+    USART_SendData(USART1, (uint8_t) buffRx[byteCounter++]);
     /* Loop until transmit data register is empty */
     while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET) {}
   }
 }
-/*uint8_t ToTimeProc(uint32_t timeCount){
-  timeCount--;
-  if (timeCount == 0)
-    return 0;
-  else return 1;
-}*/
+/******************************************************************************
+                          SendCmdToConsole
+*******************************************************************************/
+static void SendCmdToConsole(char *buffRx)
+{
+  //uint8_t buffRxSize = strlen(buffRx);
+  uint8_t byteCounter = 0;
+  while(buffRx[byteCounter])
+  {
+    USART_SendData(USART2, (uint8_t)buffRx[byteCounter++]);
+    /* Loop until transmit data register is empty */
+    while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET) {}
+  }
+}
+static void ClearBuffer(char* buff)
+{
+  for (int i = 0; i < 256; i++)
+  {
+    buff[i] = '\0';
+  }
+}
 /******************************************************************************
                           PUTCHAR_PROTOTYPE
 *******************************************************************************/
