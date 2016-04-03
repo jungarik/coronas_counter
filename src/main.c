@@ -190,7 +190,7 @@ int main( void)
     /******************************************************************************
                             Set time
     *******************************************************************************/
-        if (!strncmp(consoleRxBuff, "set time", 8) && cmdConsoleSet && cntConsoleRx == 18)
+        if (strncmp(consoleRxBuff, "set time", 8) == 0&& cmdConsoleSet && cntConsoleRx == 18)
         {
           int hours = 0; 
           int minutes = 0;
@@ -208,7 +208,7 @@ int main( void)
     /******************************************************************************
                             Set date
     *******************************************************************************/
-        if (!strncmp(consoleRxBuff, "set date", 8) && cmdConsoleSet && cntConsoleRx == 17)
+        if (strncmp(consoleRxBuff, "set date", 8) == 0 && cmdConsoleSet && cntConsoleRx == 17)
         {
           int date = 0; 
           int month = 0;
@@ -249,7 +249,7 @@ int main( void)
                                                );
           SendCmdToConsole("\r\n> ");
         }   
-        if (!strncmp(consoleRxBuff, "modem on", 8) && cmdConsoleSet && cntConsoleRx == 8)
+        if (strncmp(consoleRxBuff, "modem on", 8) == 0 && cmdConsoleSet && cntConsoleRx == 8)
         {
           //memset(consoleRxBuff, '\0', cntConsoleRx);
           cntConsoleRx = 0;
@@ -259,7 +259,7 @@ int main( void)
           printf("\r\nOK");
           SendCmdToConsole("\r\n> ");
         } 
-        if (!strncmp(consoleRxBuff, "ATE0", 4) && cmdConsoleSet && cntConsoleRx == 4)
+        if (strncmp(consoleRxBuff, "ATE0", 4) == 0 && cmdConsoleSet && cntConsoleRx == 4)
         {
           SendCmdToModem("ATE0\r");
           //memset(consoleRxBuff, '\0', cntConsoleRx);
@@ -268,7 +268,7 @@ int main( void)
           //printf("\r\nSending command...");
           //SendCmdToConsole("\r\n> ");
         } 
-        if (!strncmp(consoleRxBuff, "AT", 2) && cmdConsoleSet && cntConsoleRx == 2)
+        if (strncmp(consoleRxBuff, "AT", 2) == 0 && cmdConsoleSet && cntConsoleRx == 2)
         {
           SendCmdToModem("AT\r");
           //memset(consoleRxBuff, '\0', cntConsoleRx);
@@ -279,7 +279,6 @@ int main( void)
         } 
         if (cmdConsoleSet)
         {
-          printf("\r\n\tcntConsoleRx: %2u", cntConsoleRx);
           printf("\r\n\tUnknown command");
           //ClearBuffer(consoleRxBuff);
           cntConsoleRx = 0;
@@ -289,7 +288,7 @@ int main( void)
     }
     if (cmdModemSet)
     {
-        if (!strncmp(modemRxBuff, "ATE0", 4) && cmdModemSet && cntModemRx == 10)
+        if (strncmp(modemRxBuff, "ATE0", 4) == 0 && cmdModemSet && cntModemRx == 10)
         {
           printf(modemRxBuff);
           //memset(modemRxBuff, '\0', cntModemRx);
@@ -298,16 +297,16 @@ int main( void)
           //printf("\r\nOK");
           SendCmdToConsole("\r\n> ");
         } 
-        if ((strncmp(modemRxBuff+2, "OK", 2) == 0) && cmdModemSet && cntModemRx == 6)
+        if (strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6)
         {
-          printf("OK");
+          printf(modemRxBuff);
           //memset(modemRxBuff, '\0', cntModemRx);
           cntModemRx = 0;
           cmdModemSet = 0;
           //printf("\r\nOK");
           SendCmdToConsole("\r\n> ");
         } 
-        if (!strncmp(modemRxBuff+2, "RING", 4) && cmdModemSet && cntModemRx == 7)
+        if (strncmp(modemRxBuff+2, "RING", 4) == 0 && cmdModemSet && cntModemRx == 7)
         {
           printf(modemRxBuff);
           //memset(modemRxBuff, '\0', BUFFSIZE);
@@ -325,33 +324,6 @@ int main( void)
           SendCmdToConsole("\r\n> ");
         }
     }
-    
-    
-    /*switch (userRxBuff[0])
-    {
-    case time:
-        switch (userRxBuff[1])
-         {
-                  // command set time
-         case set: 
-                   RTC_Config();
-                   RTC_AlarmConfig();
-                   break;
-                   // Command get time
-         case get: RTC_TimeTypeDef  RTC_TimeStruct;
-                   RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
-                   sprintf(
-                           userTxBuff, 
-                           "\r\n%2u:%02u:%02u\r\n",  
-                           RTC_TimeStruct.RTC_Hours, 
-                           RTC_TimeStruct.RTC_Minutes, 
-                           RTC_TimeStruct.RTC_Seconds
-                           );
-                   printf(userTxBuff);
-                   memset(userTxBuff,'\0',10);
-                   break;
-         }
-    }*/
   }
 }
 
