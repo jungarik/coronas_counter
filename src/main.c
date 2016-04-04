@@ -61,7 +61,7 @@ __IO uint8_t ALARM_Occured = 0;
 
 __IO uint8_t readyModem= 0;
 __IO uint8_t statusPwrModem = 0;
-__IO uint8_t startInitialize = 0;
+ uint8_t startInitialize = 0;
 
 				/* File system object for each logical drive */
 FIL file;				/* File objects */
@@ -244,7 +244,7 @@ int main( void)
 /*******************************************************************************
                           AT command from MODEM
 *******************************************************************************/
-    if (cmdModemSet)
+    /*if (cmdModemSet)
     {
         if (strncmp(modemRxBuff, "ATE0", 4) == 0 && cmdModemSet && cntModemRx == 13)
         {
@@ -280,68 +280,82 @@ int main( void)
           ClearBuffer(modemRxBuff);
           SendCmdToConsole("\r\n> ");
         }
-    }
+    }*/
 /*******************************************************************************
  *                           Initialization Modem                              *
  *                                                                             *
  *******************************************************************************/
     if (startInitialize)
     {
-      MODEMON;
-      timeOffDelay = 15000;
-      while(timeOffDelay){}
+      //MODEMON;
+      //timeOffDelay = 20000;
+      //while(timeOffDelay){}
       
-      timeOffDelay = 500;
+      timeOffDelay = 3000;
+      //printf("ATE0\r");
       SendCmdToModem("ATE0\r");
-      while(strncmp(modemRxBuff, "ATE0", 4) == 0 && cmdModemSet && cntModemRx == 13){}
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
       printf(modemRxBuff);
       cntModemRx = 0;
       cmdModemSet = 0;
       ClearBuffer(modemRxBuff);
-        
+      
+      //printf("AT+SAPBR=1,1\r\n");
       SendCmdToModem("AT+SAPBR=1,1\r\n");
-      timeOffDelay = 500;
-      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      timeOffDelay = 3000;
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
       printf(modemRxBuff);
       cntModemRx = 0;
       cmdModemSet = 0;
       ClearBuffer(modemRxBuff);
       
       SendCmdToModem("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"\r\n");
-      timeOffDelay = 500;
-      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      timeOffDelay = 3000;
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
       printf(modemRxBuff);
       cntModemRx = 0;
       cmdModemSet = 0;
       ClearBuffer(modemRxBuff);
       
       SendCmdToModem("AT+SAPBR=3,1,\"APN\",\"internet\"\r\n");
-      timeOffDelay = 500;
-      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      timeOffDelay = 3000;
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
       printf(modemRxBuff);
       cntModemRx = 0;
       cmdModemSet = 0;
       ClearBuffer(modemRxBuff);
       
       SendCmdToModem("AT+SAPBR=3,1,\"USER\",\"\"\r\n");
-      timeOffDelay = 500;
-      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      timeOffDelay = 3000;
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
       printf(modemRxBuff);
       cntModemRx = 0;
       cmdModemSet = 0;
       ClearBuffer(modemRxBuff);
       
       SendCmdToModem("AT+SAPBR=3,1,\"PWD\",\"\"\r\n");
-      timeOffDelay = 500;
-      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      timeOffDelay = 3000;
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
       
       SendCmdToModem("AT+HTTPINIT\r\n");
-      timeOffDelay = 500;
-      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 && timeOffDelay){}
+      timeOffDelay = 3000;
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
       
       SendCmdToModem("AT+HTTPPARA=\"CID\",1\r\n");
-      timeOffDelay = 500;
-      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 && timeOffDelay){}
+      timeOffDelay = 3000;
+      while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
       
       startInitialize = 0;
       readyModem = 1;
