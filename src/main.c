@@ -9,7 +9,7 @@
 #define PWROFF          GPIOB -> BSRR = GPIO_BSRR_BR_3;
 #define PWRHOLD         GPIOB -> BSRR = GPIO_BSRR_BS_3;
 #define MODEMON         GPIOA -> BSRR = GPIO_BSRR_BS_8;\
-                            Delay(9500000);\
+                            Delay(5000000);\
                             GPIOA -> BSRR = GPIO_BSRR_BR_8;                       
 #define LEDOFF          GPIOB -> BSRR = GPIO_BSRR_BR_15;
 #define LEDON           GPIOB -> BSRR = GPIO_BSRR_BS_15;
@@ -59,6 +59,10 @@ uint8_t cntConsoleRx = 0;
 
 __IO uint8_t ALARM_Occured = 0;
 
+__IO uint8_t readyModem= 0;
+__IO uint8_t statusPwrModem = 0;
+__IO uint8_t startInitialize = 0;
+
 				/* File system object for each logical drive */
 FIL file;				/* File objects */
 //DIR dir;					/* Directory object */
@@ -68,7 +72,7 @@ __IO uint32_t cntTimeDelay;
 __IO uint32_t counterPositive = 0;
 __IO uint32_t counterNegative = 0;
 
-uint32_t timeOfDelay = 0;
+ uint32_t timeOffDelay = 0;
 //------------------------------------------------------------------------------
 void Delay(unsigned int Val);
 
@@ -77,7 +81,6 @@ static void RCC_Config(void);
 static void USART1_Config(void);
 static void USART2_Config(void);
 static void RTC_Config(void);
-static void RTC_DateConfig(void);
 static void GPIO_Config(void);
 static void RTC_AlarmConfig(void);
 static void EXTI4_15_Config(void);
@@ -127,81 +130,39 @@ int main( void)
   LEDON;
   __enable_irq ();
   SendCmdToConsole("\r\n> ");
-  /*MODEMON;
-  timeOfDelay = 
-  while()
-  timeOfDelay = 1000; 
-  SendCmdToModem("ATE0\r\n");
-  while ((strncmp(cmdRxBuff, "OK", 2)) && timeOfDelay ){}
-  printf(" 1000s lasted ");*/
 
-  /*sprintf(Line, "ATE0\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  sprintf(Line, "AT+SAPBR=1,1\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-   Delay(950000);
-  Delay(950000);
-   Delay(950000);
-  Delay(950000);
-  sprintf(Line, "AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-  sprintf(Line, "AT+SAPBR=3,1,\"APN\",\"internet\"\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-  sprintf(Line, "AT+SAPBR=3,1,\"USER\",\"\"\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-  sprintf(Line, "AT+SAPBR=3,1,\"PWD\",\"\"\r\n");
-  UART1_Tx_Str(Line);
-  sprintf(Line, "AT+SAPBR=3,1,\"RATE\",3\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-  Delay(950000);
-
-  sprintf(Line, "AT+HTTPINIT\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-  sprintf(Line, "AT+HTTPPARA=\"CID\",1\r\n");
-  UART1_Tx_Str(Line);
-  Delay(950000);
-  Delay(950000);
-  __enable_irq ();*/
+  /*sprintf(Line, "ATE0\r\n");                                          // ќтменить эхо команд
+  sprintf(Line, "AT+SAPBR=1,1\r\n")                                     // ”станавливаем GPRS соединение
+  sprintf(Line, "AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"\r\n");               // CONTYPE Ц тип подключени€ GPRS или CSD
+  sprintf(Line, "AT+SAPBR=3,1,\"APN\",\"internet\"\r\n");               // APN Ц точка подключени€
+  sprintf(Line, "AT+SAPBR=3,1,\"USER\",\"\"\r\n");                      // USER Ц им€ пользовател€
+  sprintf(Line, "AT+SAPBR=3,1,\"PWD\",\"\"\r\n");                       // PWD Ц пароль
+  sprintf(Line, "AT+SAPBR=5,1\r\n");                                    // —охранить настройки GPRS
+  sprintf(Line, "AT+HTTPINIT\r\n");                                     // »нициализаци€ http сервиса
+  sprintf(Line, "AT+HTTPPARA=\"CID\",1\r\n");*/                         // ”становка CID параметра дл€ http сессии
  
-
   while(1) 
   {
+/*******************************************************************************
+ *                           Console command                                   *
+ *                                                                             *
+ *******************************************************************************/
     if (cmdConsoleSet)
     {
     /******************************************************************************
                             Set time
     *******************************************************************************/
-        if (strncmp(consoleRxBuff, "set time", 8) == 0&& cmdConsoleSet && cntConsoleRx == 18)
+        if (strncmp(consoleRxBuff, "set time", 8) == 0 && cmdConsoleSet && cntConsoleRx == 18)
         {
           int hours = 0; 
           int minutes = 0;
           int seconds = 0;
           sscanf(consoleRxBuff + 9, "%d %d %d", &hours, &minutes, &seconds);
           SetCurrentTime(hours, minutes, seconds); //Arguments: 1st - hours, 2nd - minutes, 3rd - seconds
-          
-          memset(consoleRxBuff, '\0', cntConsoleRx);
+    
           cntConsoleRx = 0;
           cmdConsoleSet = 0;
-       
+          ClearBuffer(consoleRxBuff);
           printf("\r\nOK");
           SendCmdToConsole("\r\n> ");
         } 
@@ -214,21 +175,17 @@ int main( void)
           int month = 0;
           int year = 0;
           sscanf(consoleRxBuff + 9, "%d %d %d", &date, &month, &year);
-          SetCurrentDate(date, month, year); //Arguments: 1st - hours, 2nd - minutes, 3rd - seconds
-          
-          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          SetCurrentDate(date, month, year); //Arguments: 1st - hours, 2nd - minutes, 3rd - seconds       
+   
           cntConsoleRx = 0;
           cmdConsoleSet = 0;
-          
+          ClearBuffer(consoleRxBuff);
           printf("\r\nOK");
           SendCmdToConsole("\r\n> ");
         }
         
         if (strncmp(consoleRxBuff, "get time", 8) == 0 && cmdConsoleSet && cntConsoleRx == 8)
         {
-          //memset(consoleRxBuff, '\0', cntConsoleRx);
-          cntConsoleRx = 0;
-          cmdConsoleSet = 0;
           
           /*  */
           RTC_DateTypeDef RTC_CurrentDateStructure;
@@ -247,82 +204,147 @@ int main( void)
                                                 RTC_gettingTimeStruct.RTC_Minutes, 
                                                 RTC_gettingTimeStruct.RTC_Seconds
                                                );
+          cntConsoleRx = 0;
+          cmdConsoleSet = 0;
+          ClearBuffer(consoleRxBuff);
           SendCmdToConsole("\r\n> ");
         }   
         if (strncmp(consoleRxBuff, "modem on", 8) == 0 && cmdConsoleSet && cntConsoleRx == 8)
         {
-          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          startInitialize = 1;
           cntConsoleRx = 0;
           cmdConsoleSet = 0;
-          
-          MODEMON;
-          printf("\r\nOK");
-          SendCmdToConsole("\r\n> ");
+          ClearBuffer(consoleRxBuff);
+          //printf("\r\nOK");
+          //SendCmdToConsole("\r\n> ");
         } 
         if (strncmp(consoleRxBuff, "ATE0", 4) == 0 && cmdConsoleSet && cntConsoleRx == 4)
         {
-          SendCmdToModem("ATE0\r");
-          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          SendCmdToModem(consoleRxBuff);
           cntConsoleRx = 0;
           cmdConsoleSet = 0;
-          //printf("\r\nSending command...");
-          //SendCmdToConsole("\r\n> ");
+          ClearBuffer(consoleRxBuff);
         } 
         if (strncmp(consoleRxBuff, "AT", 2) == 0 && cmdConsoleSet && cntConsoleRx == 2)
         {
-          SendCmdToModem("AT\r");
-          //memset(consoleRxBuff, '\0', cntConsoleRx);
+          SendCmdToModem(consoleRxBuff);
           cntConsoleRx = 0;
           cmdConsoleSet = 0;
-          //printf("\r\nSending command...");
-          //SendCmdToConsole("\r\n> ");
+          ClearBuffer(consoleRxBuff);
         } 
         if (cmdConsoleSet)
         {
-          printf("\r\n\tUnknown command");
-          //ClearBuffer(consoleRxBuff);
+          printf("\r\nUnknown command");
           cntConsoleRx = 0;
           cmdConsoleSet = 0;
+          ClearBuffer(consoleRxBuff);
           SendCmdToConsole("\r\n> ");
         }
     }
+/*******************************************************************************
+                          AT command from MODEM
+*******************************************************************************/
     if (cmdModemSet)
     {
-        if (strncmp(modemRxBuff, "ATE0", 4) == 0 && cmdModemSet && cntModemRx == 10)
+        if (strncmp(modemRxBuff, "ATE0", 4) == 0 && cmdModemSet && cntModemRx == 13)
         {
           printf(modemRxBuff);
-          //memset(modemRxBuff, '\0', cntModemRx);
           cntModemRx = 0;
           cmdModemSet = 0;
-          //printf("\r\nOK");
-          SendCmdToConsole("\r\n> ");
+          ClearBuffer(modemRxBuff);
+          SendCmdToConsole("> ");
         } 
         if (strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6)
         {
           printf(modemRxBuff);
-          //memset(modemRxBuff, '\0', cntModemRx);
           cntModemRx = 0;
           cmdModemSet = 0;
-          //printf("\r\nOK");
-          SendCmdToConsole("\r\n> ");
+          ClearBuffer(modemRxBuff);
+          SendCmdToConsole("> ");
         } 
-        if (strncmp(modemRxBuff+2, "RING", 4) == 0 && cmdModemSet && cntModemRx == 7)
+        if (strncmp(modemRxBuff+2, "RING", 4) == 0 && cmdModemSet && cntModemRx == 8)
         {
           printf(modemRxBuff);
-          //memset(modemRxBuff, '\0', BUFFSIZE);
           cntModemRx = 0;
           cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
         } 
         if (cmdModemSet)
         {
-          int i = strncmp(modemRxBuff+2, "OK", 2);
-          printf("\r\n\tCompare strings: %2i", i);
-          printf("\r\n\tcntModemRx: %2u", cntModemRx);
-          printf("\r\n\tUnknown command");
+          //int i = strncmp(modemRxBuff+2, "OK", 2);
+          //printf("\r\n\tCompare strings: %2i", i);
+          printf("\r\ncntModemRx: %2u", cntModemRx);
+          printf("\r\nUnknown command");
           cntModemRx = 0;
           cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
           SendCmdToConsole("\r\n> ");
         }
+    }
+/*******************************************************************************
+ *                           Initialization Modem                              *
+ *                                                                             *
+ *******************************************************************************/
+    if (startInitialize)
+    {
+      MODEMON;
+      timeOffDelay = 15000;
+      while(timeOffDelay){}
+      
+      timeOffDelay = 500;
+      SendCmdToModem("ATE0\r");
+      while(strncmp(modemRxBuff, "ATE0", 4) == 0 && cmdModemSet && cntModemRx == 13){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
+        
+      SendCmdToModem("AT+SAPBR=1,1\r\n");
+      timeOffDelay = 500;
+      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
+      
+      SendCmdToModem("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"\r\n");
+      timeOffDelay = 500;
+      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
+      
+      SendCmdToModem("AT+SAPBR=3,1,\"APN\",\"internet\"\r\n");
+      timeOffDelay = 500;
+      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
+      
+      SendCmdToModem("AT+SAPBR=3,1,\"USER\",\"\"\r\n");
+      timeOffDelay = 500;
+      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      printf(modemRxBuff);
+      cntModemRx = 0;
+      cmdModemSet = 0;
+      ClearBuffer(modemRxBuff);
+      
+      SendCmdToModem("AT+SAPBR=3,1,\"PWD\",\"\"\r\n");
+      timeOffDelay = 500;
+      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 ){}
+      
+      SendCmdToModem("AT+HTTPINIT\r\n");
+      timeOffDelay = 500;
+      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 && timeOffDelay){}
+      
+      SendCmdToModem("AT+HTTPPARA=\"CID\",1\r\n");
+      timeOffDelay = 500;
+      while(strncmp(modemRxBuff+2, "OK", 2) == 0 && cmdModemSet && cntModemRx == 6 && timeOffDelay){}
+      
+      startInitialize = 0;
+      readyModem = 1;
     }
   }
 }
@@ -334,7 +356,7 @@ void SysTick_Handler(void)
 {
   /* —четчик дл€ отсечта времени секунд */
   cntTimeMs += 1;
-  WaitTickTime( &timeOfDelay );
+  WaitTickTime( &timeOffDelay );
   if (cntTimeMs == 1000)
   {
       /* —бросить счетчик секунд */
@@ -355,42 +377,40 @@ void SysTick_Handler(void)
         /* ”становка следующего времени запуска устроуства по умолчанию, 30 сек */
         SetNextStartTime(RTC_gettingTimeStruct, 0, 0, 10); // Arguments: 0ro - current time, 1st - hours, 2nd - minutes, 3rd - seconds
         
-        /* ќтправить текущее врем€ перед выключением */
-        /*printf("\n\r%02u/%02u/%2d %02u:%02u:%02d\n\r",  RTC_CurrentDateStructure.RTC_Date,
-                                                        RTC_CurrentDateStructure.RTC_Month,
-                                                        RTC_CurrentDateStructure.RTC_Year,
-                                                        RTC_gettingTimeStruct.RTC_Hours, 
-                                                        RTC_gettingTimeStruct.RTC_Minutes, 
-                                                        RTC_gettingTimeStruct.RTC_Seconds
-                                                      );*/
-        
         /* ¬ыключаем питание устройства */
         PWROFF;
       }
       else
       {
-        
-        if (counterPositive)
-        {
-          printf("\n\r Positive: %5u\n\r", counterPositive);
-          sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=P&value=%d\"\r\n", counterPositive);
-          //SendCmdToModem(modemTxBuff);
-          
-          //SendCmdToModem("AT+HTTPACTION=0\r\n");
-          memset(modemTxBuff, '\0', 255);
-          counterPositive = 0;         
-        }
-        if (counterNegative)
-        {
-          printf("\n\rNegative: %5u\n\r", counterNegative);
-          sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=N&value=%d\"\r\n", counterPositive);
-          //SendCmdToModem(modemTxBuff);
-          
-          
-          //SendCmdToModem("AT+HTTPACTION=0\r\n");
-          memset(modemTxBuff, '\0', 255);
-          counterNegative = 0;
-        }
+          //if (readyModem && statusPwrModem)
+          //{
+            if (counterPositive)
+            {
+              printf("\n\r Positive: %5u\n\r", counterPositive);
+              sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=P&value=%d\"\r\n", counterPositive);
+              SendCmdToModem(modemTxBuff);
+              
+              SendCmdToModem("AT+HTTPACTION=0\r\n");
+              memset(modemTxBuff, '\0', 255);
+              counterPositive = 0;         
+            }
+            if (counterNegative)
+            {
+              printf("\n\rNegative: %5u\n\r", counterNegative);
+              sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=N&value=%d\"\r\n", counterPositive);
+              //SendCmdToModem(modemTxBuff);
+              
+              
+              //SendCmdToModem("AT+HTTPACTION=0\r\n");
+              memset(modemTxBuff, '\0', 255);
+              counterNegative = 0;
+            }
+          //}
+          //else 
+          //{
+            //statusPwrModem = 1;
+            //startInitialize = 1;
+          //}
       }
   }
 }
