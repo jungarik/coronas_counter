@@ -108,7 +108,7 @@ int main( void)
 {
   /* Начальная конфигурация устройства */
   SystemInit();
-  RCC_Config();
+  RCC_Config(); 
   GPIO_Config(); 
   
   /* После конфигурации GPIO сразу включить удержание питания!!! */
@@ -152,7 +152,7 @@ int main( void)
     /******************************************************************************
                             Set time
     *******************************************************************************/
-        if (strncmp(consoleRxBuff, "set time", 8) == 0 && cmdConsoleSet && cntConsoleRx == 18)
+        if (strncmp(consoleRxBuff, "set time", 8) == 0 && cmdConsoleSet && cntConsoleRx == 17)
         {
           int hours = 0; 
           int minutes = 0;
@@ -208,9 +208,14 @@ int main( void)
           cmdConsoleSet = 0;
           ClearBuffer(consoleRxBuff);
           SendCmdToConsole("\r\n> ");
-        }   
+        } 
+        /******************************************************************************
+                            MODEM ON
+        *******************************************************************************/
         if (strncmp(consoleRxBuff, "modem on", 8) == 0 && cmdConsoleSet && cntConsoleRx == 8)
         {
+          SendCmdToModem("ATE0\r");
+          while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
           startInitialize = 1;
           cntConsoleRx = 0;
           cmdConsoleSet = 0;
@@ -287,22 +292,84 @@ int main( void)
  *******************************************************************************/
     if (startInitialize)
     {
-      //MODEMON;
-      //timeOffDelay = 20000;
-      //while(timeOffDelay){}
+      timeOffDelay = 100;
       
-      timeOffDelay = 3000;
-      //printf("ATE0\r");
-      SendCmdToModem("ATE0\r");
+      /* Send AT for checking modem's power */
+      SendCmdToModem("AT\r");
       while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
-      printf(modemRxBuff);
-      cntModemRx = 0;
-      cmdModemSet = 0;
-      ClearBuffer(modemRxBuff);
+      
+      /* No response from modem. Turn on power of modem*/
+      if (!timeOffDelay)
+      {
+        /* Вклчить питание с задержкой*/
+        MODEMON;
+        
+        /* Wait 1 sec while modem starts scaning */
+        timeOffDelay = 3000;
+        while(timeOffDelay){}
+        printf("\r\nPower is on");
+        
+        cntModemRx = 0;
+        cmdModemSet = 0;
+        ClearBuffer(modemRxBuff);
+        
+        timeOffDelay = 500;
+        SendCmdToModem("ATE0\r");
+        while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
+        printf(modemRxBuff);
+        cntModemRx = 0;
+        cmdModemSet = 0;
+        ClearBuffer(modemRxBuff);
+      }
+      else printf("\r\nModem has already turned on");
+      
+      /* Ask for getting registration modem network in 1sec, max attempts 10 */
+      for (int i = 0; i < 10; i++)
+      {
+        int netReg = 0;
+        timeOffDelay = 500;
+        SendCmdToModem("AT+CREG?\r");
+        while(!(strncmp(modemRxBuff+2, "+CREG", 5) == 0) && !cmdModemSet && !(cntModemRx == 19) && timeOffDelay){}
+        printf("\r\ncntModemRx: %2u", cntModemRx);
+        printf(modemRxBuff);
+        
+        if (strncmp(modemRxBuff+2, "+CREG", 5) == 0)
+        {
+          sscanf(modemRxBuff + 11, "%d", &netReg);
+          if (netReg)
+          {
+            printf(modemRxBuff);
+            cntModemRx = 0;
+            cmdModemSet = 0;
+            ClearBuffer(modemRxBuff);
+            printf("Modem is connected");
+            break;
+          }
+          else 
+          {
+            printf("Numbers of attempts %2i", i);
+          }
+          timeOffDelay = 1000;
+          while(timeOffDelay){}
+          printf(modemRxBuff);
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
+        }
+        else 
+        {
+          
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
+          printf("\r\nNo response from modem");
+          break;
+        }
+      }
       
       //printf("AT+SAPBR=1,1\r\n");
       SendCmdToModem("AT+SAPBR=1,1\r\n");
-      timeOffDelay = 3000;
+      timeOffDelay = 500;
       while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){}
       printf(modemRxBuff);
       cntModemRx = 0;
@@ -360,6 +427,52 @@ int main( void)
       startInitialize = 0;
       readyModem = 1;
     }
+    if (sendData)
+    {
+      if (data1)
+        {
+          printf("\n\r Positive: %5u\n\r", counterPositive);
+          sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=P&value=%d\"\r\n", counterPositive);
+          SendCmdToModem(modemTxBuff);
+          
+          timeOffDelay = 500;
+          while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){} 
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
+          
+          SendCmdToModem("AT+HTTPACTION=0\r\n");
+          
+          timeOffDelay = 500;
+          while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){} 
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
+                       
+         }
+     if (data2)
+       {
+          printf("\n\rNegative: %5u\n\r", counterNegative);
+          sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=N&value=%d\"\r\n", counterPositive);
+          SendCmdToModem(modemTxBuff);   
+          
+          timeOffDelay = 500;
+          while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){} 
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
+          
+          SendCmdToModem("AT+HTTPACTION=0\r\n"); 
+          
+          timeOffDelay = 500;
+          while(!(strncmp(modemRxBuff+2, "OK", 2) == 0) && !cmdModemSet && !(cntModemRx == 6) && timeOffDelay){} 
+          cntModemRx = 0;
+          cmdModemSet = 0;
+          ClearBuffer(modemRxBuff);
+       }
+      ClearBuffer(modemTxBuff);
+      sendData = 0;
+    }
   }
 }
 
@@ -396,35 +509,19 @@ void SysTick_Handler(void)
       }
       else
       {
-          //if (readyModem && statusPwrModem)
-          //{
-            if (counterPositive)
-            {
-              printf("\n\r Positive: %5u\n\r", counterPositive);
-              sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=P&value=%d\"\r\n", counterPositive);
-              SendCmdToModem(modemTxBuff);
-              
-              SendCmdToModem("AT+HTTPACTION=0\r\n");
-              memset(modemTxBuff, '\0', 255);
-              counterPositive = 0;         
-            }
-            if (counterNegative)
-            {
-              printf("\n\rNegative: %5u\n\r", counterNegative);
-              sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=N&value=%d\"\r\n", counterPositive);
-              //SendCmdToModem(modemTxBuff);
-              
-              
-              //SendCmdToModem("AT+HTTPACTION=0\r\n");
-              memset(modemTxBuff, '\0', 255);
-              counterNegative = 0;
-            }
-          //}
-          //else 
-          //{
-            //statusPwrModem = 1;
-            //startInitialize = 1;
-          //}
+          if (readyModem && !sendData)
+          {
+            data1 = counterPositive;
+            data2 = counterNegative;
+            sendData = 1;
+            counterPositive = 0;
+            counterNegative = 0;
+          }
+          if (!statusPwrModem)
+          {
+            statusPwrModem = 1;
+            startInitialize = 1; 
+          }
       }
   }
 }
