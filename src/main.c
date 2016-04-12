@@ -72,10 +72,13 @@ uint8_t startInitialize = 0;
 uint32_t cntTimeMs;
 __IO uint32_t cntTimeDelay;
 
-uint32_t counterPositive = 1654; //0;
-uint32_t counterNegative = 988;  //0;
+//uint32_t counterPositive = 1654; //0;
+//uint32_t counterNegative = 988;  //0;
 
- uint32_t timeOffDelay = 0;
+uint32_t counterPositive = 0;
+uint32_t counterNegative = 0;
+
+uint32_t timeOffDelay = 0;
 //------------------------------------------------------------------------------
 void Delay(unsigned int Val);
 

@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=1753182027
+Checksum=-1739941792
 [Exceptions]
 StopOnUncaught=_ 0
 StopOnThrow=_ 0
@@ -59,10 +59,6 @@ GraphEnabled=0
 ShowTimeLog=1
 ShowTimeSum=1
 SumSortOrder=0
-[Disassemble mode]
-mode=0
-[Breakpoints2]
-Count=0
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
@@ -70,14 +66,6 @@ Category=_ 0
 [TermIOLog]
 LoggingEnabled=_ 0
 LogFile=_ ""
-[Aliases]
-A0=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rcc.c" ""
-A1=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
-A2=_ "E:\Work\SD_micro_F051C8\startup\startup_stm32f051.s" ""
-A3=_ "U:\SD_micro_F051C8\src\stm32f0xx_rcc.c" ""
-A4=_ "U:\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
-Count=5
-SuppressDialog=1
 [Trace2]
 Enabled=0
 ShowSource=0
@@ -98,3 +86,15 @@ Mode=3
 Graph=0
 Symbiont=0
 Exclusions=
+[Disassemble mode]
+mode=0
+[Breakpoints2]
+Count=0
+[Aliases]
+A0=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rcc.c" ""
+A1=_ "E:\Work\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
+A2=_ "E:\Work\SD_micro_F051C8\startup\startup_stm32f051.s" ""
+A3=_ "U:\SD_micro_F051C8\src\stm32f0xx_rcc.c" ""
+A4=_ "U:\SD_micro_F051C8\src\stm32f0xx_rtc.c" ""
+Count=5
+SuppressDialog=1
