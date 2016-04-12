@@ -67,18 +67,17 @@ uint8_t statusPwrModem = 0;
 uint8_t startInitialize = 0;
 
 				/* File system object for each logical drive */
-FIL file;				/* File objects */
+				/* File objects */
 //DIR dir;					/* Directory object */
 uint32_t cntTimeMs;
 __IO uint32_t cntTimeDelay;
 
-uint32_t counterPositive = 0;
-uint32_t counterNegative = 0;
+uint32_t counterPositive = 1654; //0;
+uint32_t counterNegative = 988;  //0;
 
  uint32_t timeOffDelay = 0;
 //------------------------------------------------------------------------------
 void Delay(unsigned int Val);
-
 
 static void RCC_Config(void);
 static void USART1_Config(void);
@@ -203,7 +202,7 @@ int main( void)
           SendCmdToConsole("\r\n> ");
         } 
         /******************************************************************************
-                            Send sequense pulses
+                            Send sequense of pulses
         *******************************************************************************/
         if (strncmp(consoleRxBuff, "pulses", 6) == 0 && cmdConsoleSet && cntConsoleRx == 6)
         {
@@ -480,16 +479,16 @@ int main( void)
       
       sprintf(modemTxBuff, "AT+HTTPPARA=\"URL\",\"http://77.120.180.73/input.php?pol=%d&value=%d\"\r", data1, data2);
       
-      SendCmdToModem(modemTxBuff);   
       timeOffDelay = 500;
+      SendCmdToModem(modemTxBuff);   
       while(!cmdModemSet && timeOffDelay){} //!(strncmp(modemRxBuff+2, "OK", 2) == 0) &&
       printf(modemRxBuff);
       cntModemRx = 0;
       cmdModemSet = 0;
       memset(modemRxBuff, '\0', 255);
-          
-      SendCmdToModem("AT+HTTPACTION=0\r");    
+      
       timeOffDelay = 500;
+      SendCmdToModem("AT+HTTPACTION=0\r");    
       while(!cmdModemSet && timeOffDelay){} //!(strncmp(modemRxBuff+2, "OK", 2) == 0) &&
       printf(modemRxBuff);
       cntModemRx = 0;
@@ -516,7 +515,7 @@ void SysTick_Handler(void)
       
       /* Проверить наличие импульсов в каналах */
       /* если нету выключить питание (устройство) */
-      if ((!counterNegative)&&(!counterPositive))
+      if ((!counterNegative)&&(!counterPositive)&&(!sendData))
       {
         /*  */
         RTC_DateTypeDef RTC_CurrentDateStructure;
@@ -527,7 +526,7 @@ void SysTick_Handler(void)
         RTC_GetTime(RTC_Format_BIN, &RTC_gettingTimeStruct);
         
         /* Установка следующего времени запуска устроуства по умолчанию, 30 сек */
-        SetNextStartTime(RTC_gettingTimeStruct, 0, 0, 10); // Arguments: 0ro - current time, 1st - hours, 2nd - minutes, 3rd - seconds
+        SetNextStartTime(RTC_gettingTimeStruct, 0, 0, 30); // Arguments: 0ro - current time, 1st - hours, 2nd - minutes, 3rd - seconds
         
         /* Выключаем питание устройства */
         PWROFF;
